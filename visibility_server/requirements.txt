@@ -1,0 +1,6 @@
+flask
+flask-restful
+tinydb
+flasgger
+pytest
+nats-py

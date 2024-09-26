@@ -1,0 +1,25 @@
+post:
+  tags:
+    - User
+  description: 에이전트의 프레임 전송 설정을 변경합니다.
+  parameters:
+    - in: body
+      name: body
+      required: true
+      schema:
+        type: object
+        required:
+          - agent_id
+          - frame_transmission_enabled
+        properties:
+          agent_id:
+            type: string
+          frame_transmission_enabled:
+            type: boolean
+  responses:
+    200:
+      description: 설정 변경 성공
+    400:
+      description: 잘못된 요청
+    404:
+      description: 에이전트를 찾을 수 없음

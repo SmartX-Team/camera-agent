@@ -1,0 +1,32 @@
+post:
+  tags:
+    - Agent
+  description: 에이전트가 자신의 상태를 업데이트합니다.
+  parameters:
+    - in: body
+      name: body
+      required: true
+      schema:
+        type: object
+        required:
+          - agent_id
+        properties:
+          agent_id:
+            type: string
+          camera_status:
+            type: array
+            items:
+              type: object
+              properties:
+                camera_id:
+                  type: integer
+                connected:
+                  type: boolean
+          frame_transmission_enabled:
+            type: boolean
+  responses:
+    200:
+      description: 상태 업데이트 성공
+    400:
+      description: 잘못된 요청
+

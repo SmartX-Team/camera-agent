@@ -1,0 +1,22 @@
+get:
+  tags:
+    - Agent
+  description: 에이전트가 자신의 설정을 가져옵니다.
+  parameters:
+    - in: query
+      name: agent_id
+      type: string
+      required: true
+  responses:
+    200:
+      description: 설정 가져오기 성공
+      schema:
+        type: object
+        properties:
+          frame_transmission_enabled:
+            type: boolean
+    400:
+      description: 잘못된 요청
+    404:
+      description: 에이전트를 찾을 수 없음
+

@@ -1,0 +1,27 @@
+get:
+  tags:
+    - User
+  description: 모든 에이전트의 카메라 상태를 조회합니다.
+  responses:
+    200:
+      description: 조회 성공
+      schema:
+        type: array
+        items:
+          type: object
+          properties:
+            agent_id:
+              type: string
+            last_update:
+              type: string
+            camera_status:
+              type: array
+              items:
+                type: object
+                properties:
+                  camera_id:
+                    type: integer
+                  connected:
+                    type: boolean
+            frame_transmission_enabled:
+              type: boolean
