@@ -36,16 +36,22 @@ app.config['SWAGGER'] = {
 }
 swagger = Swagger(app)
 
-# 로깅
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
-handler = RotatingFileHandler('logs/app.log', maxBytes=1000000, backupCount=5)
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+log_file = os.path.join(log_dir, 'app.log')
+
+handler = RotatingFileHandler(log_file, maxBytes=1000000, backupCount=5)
 handler.setLevel(logging.INFO)
 
 formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
 handler.setFormatter(formatter)
 
+# 로깅
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 # Flask 앱의 로거 설정
