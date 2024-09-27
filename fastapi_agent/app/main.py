@@ -1,9 +1,11 @@
 # app/main.py
 from fastapi import FastAPI
 from .rtsp_server import RTSPServer
+from .camera_manager import CameraManager
 import threading
 import logging
 import os
+import requests
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

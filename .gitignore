@@ -1,4 +1,4 @@
 .env
 app.log
-
+.pyc
 camera_agent/

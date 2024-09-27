@@ -25,6 +25,7 @@ class RTSPServer(threading.Thread):
 
         self.mount_points = self.server.get_mount_points()
         self.mount_points.add_factory(mount_point, self.factory)
+        self.mount_point = mount_point
 
     def run(self):
         self.server.attach(None)
