@@ -30,21 +30,23 @@ class RTSPServer(threading.Thread):
         self.server.attach(None)
         self.loop.run()
 
-    def start_stream(self):
+    def start_stream(self, device='/dev/video0'):
         if self.is_streaming:
-            print("스트리밍이 이미 실행 중입니다.")
+            print("Streaming is already in progress.")
             return
-        pipeline_str = "( v4l2src ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
+        # 실제 카메라 데이터 송출
+        pipeline_str = f"( v4l2src device={device} ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
         self.factory.set_launch(pipeline_str)
         self.is_streaming = True
-        print("스트리밍을 시작했습니다.")
+        print(f"Streaming has started on device {device}.")
 
     def stop_stream(self):
         if not self.is_streaming:
-            print("스트리밍이 실행 중이 아닙니다.")
+            print("Streaming is not in progress.")
             return
         # 빈 영상을 송출하는 파이프라인으로 전환
         pipeline_str = "( videotestsrc pattern=black ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
         self.factory.set_launch(pipeline_str)
         self.is_streaming = False
-        print("스트리밍을 중지했습니다. 빈 영상을 송출합니다.")
+        print("Streaming has stopped. A blank video is being transmitted.")
+

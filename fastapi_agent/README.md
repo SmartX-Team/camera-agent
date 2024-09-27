@@ -11,13 +11,6 @@ Visibility Server 와 통신하면서 카메라 정보 조회 및 파이프라�
 빠르게 개발하고, 현재 통신 정도는 FAST API 로 개발해도 문제 없을꺼라 판단해서 우선 FAST API 기반으로 Agent 실행
 
 
---------------------------------------------
-서버측이 Agent 에 요청을 할때는 gRPC 메인으로 사용함 
-
-gRPC 용 프로토콜 버퍼 생성은 다음과 같음
-
-python -m grpc_tools.protoc -I./models/grpc_proto --python_out=./models/grpc_proto --grpc_python_out=./models/grpc_proto ./models/grpc_proto/agent.proto
-
 애플리케이션 실행
 
 uvicorn app.main:app --reload --host 0.0.0.0
@@ -63,4 +56,14 @@ docker run --rm -it \
     -e RTSP_SERVER_IP=rtsp_server_ip \
     -e RTSP_SERVER_PORT=8554 \
     agent
+
+
+
+아래 내용은 설계 변경으로 FAST API 로 기능 대체함
+--------------------------------------------
+서버측이 Agent 에 요청을 할때는 gRPC 메인으로 사용함 
+
+gRPC 용 프로토콜 버퍼 생성은 다음과 같음
+
+python -m grpc_tools.protoc -I./models/grpc_proto --python_out=./models/grpc_proto --grpc_python_out=./models/grpc_proto ./models/grpc_proto/agent.proto
 

@@ -1,0 +1,43 @@
+# docs/agent_register.yml
+
+post:
+  tags:
+    - Agent
+  summary: Register a new agent
+  description: Agent registers itself with the server
+  parameters:
+    - in: body
+      name: body
+      schema:
+        type: object
+        required:
+          - agent_name
+          - ip
+          - port
+        properties:
+          agent_name:
+            type: string
+            description: Name of the agent
+          ip:
+            type: string
+            description: IP address of the agent
+          port:
+            type: integer
+            description: Port number of the agent
+  responses:
+    201:
+      description: Agent registered successfully
+      schema:
+        type: object
+        properties:
+          message:
+            type: string
+          agent_id:
+            type: string
+    400:
+      description: Bad request
+      schema:
+        type: object
+        properties:
+          message:
+            type: string
