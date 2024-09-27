@@ -50,3 +50,6 @@ class RTSPServer(threading.Thread):
         self.is_streaming = False
         print("Streaming has stopped. A blank video is being transmitted.")
 
+    def get_stream_uri(self):
+        return f"rtsp://{self.server.props.address}:{self.server.props.service}{self.mount_point}"
+

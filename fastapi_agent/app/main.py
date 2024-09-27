@@ -2,7 +2,8 @@
 from fastapi import FastAPI
 from .rtsp_server import RTSPServer
 import threading
-
+import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
