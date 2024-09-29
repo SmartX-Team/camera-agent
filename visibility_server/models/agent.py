@@ -24,7 +24,7 @@ from connections import AgentTable
 class AgentModel:
     
     @staticmethod
-    def add_agent(agent_name, ip, port, stream_uri):
+    def add_agent(agent_name, ip, port, stream_uri, rtsp_allowed_ip_range):
         """
         새로운 에이전트를 데이터베이스에 추가하는 함수.
         """
@@ -35,6 +35,7 @@ class AgentModel:
             'ip': ip,
             'port': port,
             'stream_uri': stream_uri ,
+            'rtsp_allowed_ip_range': rtsp_allowed_ip_range,
             'camera_status': [],
             'last_update': datetime.utcnow().isoformat(),
             'frame_transmission_enabled': False
