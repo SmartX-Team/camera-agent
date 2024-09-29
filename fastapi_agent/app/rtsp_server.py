@@ -21,6 +21,7 @@ class CustomRTSPMediaFactory(GstRtspServer.RTSPMediaFactory):
         super(CustomRTSPMediaFactory, self).__init__(**properties)
         self.device = device
         self.media = None
+        self.pipeline = None
 
     def do_create_element(self, url):
         pipeline_str = f"( v4l2src device={self.device} ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
@@ -28,11 +29,15 @@ class CustomRTSPMediaFactory(GstRtspServer.RTSPMediaFactory):
 
     def do_media_configure(self, media):
         self.media = media
+        # media에서 파이프라인 요소 가져오기
+        self.pipeline = media.get_element()
 
     def stop(self):
+        if self.pipeline:
+            # 파이프라인의 상태를 NULL로 변경하여 스트리밍 중지
+            self.pipeline.set_state(Gst.State.NULL)
+            self.pipeline = None
         if self.media:
-            self.media.set_eos()
-            self.media.set_state(Gst.State.NULL)
             self.media = None
 
 class RTSPServer(threading.Thread):
