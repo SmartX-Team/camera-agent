@@ -13,22 +13,35 @@ from models.agent import AgentModel
 import logging
 
 
-# 처음 Agent 가 Visiblity 서버에 접속할때 알림
+""" 처음 Agent 가 Visiblity 서버에 접속할때 알림
+현재는 내부 DB에 처음 agent가 등록할때 관련 정보 저장
+"""
 class AgentRegister(Resource):
     @swag_from('../docs/agent_register.yml')
     def post(self):
         data = request.get_json()
         agent_name = data.get('agent_name')
-        ip = data.get('agent_ip')
+        host_ip = self.get_client_ip()
         port = data.get('rtsp_port')
-        stream_uri = data.get('stream_uri')
+        mount_point = data.get('mount_point', '/test')
+        rtsp_allowed_ip_range = data.get('rtsp_allowed_ip_range', '0.0.0.0/0')
 
-        if not agent_name or not ip or not port:
+        if not agent_name or not host_ip or not port:
             return {'message': 'agent_name, ip, and port are required'}, 400
+        # stream_url 설정
+        stream_uri = f'rtsp://{host_ip}:{port}{mount_point}' 
 
         # Agent 등록
-        agent_id = AgentModel.add_agent(agent_name, ip, port, stream_uri)
+        agent_id = AgentModel.add_agent(agent_name, host_ip, port, stream_uri, rtsp_allowed_ip_range)
         return {'message': 'Agent registered successfully', 'agent_id': agent_id}, 201
+    
+    # Agent 등록시 Host의 IP를 가져오는 함수
+    def get_client_ip(self):
+        if request.headers.getlist("X-Forwarded-For"):
+            ip = request.headers.getlist("X-Forwarded-For")[0].split(',')[0]
+        else:
+            ip = request.remote_addr
+        return ip
 
 
 class AgentUpdateStatus(Resource):
