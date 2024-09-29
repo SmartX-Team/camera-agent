@@ -1,3 +1,15 @@
+"""
+
+처음 agent 가 실행시 register_agent() 실행,
+등록 실패시 일단 agent 종료하도록함
+
+해당 코드는 처음 등록할때 서버에 등록 및 FAST API 서버 실행되도록함
+FAST API 는 후에 gRPC 로 대체될 수 있음
+
+최근 작성일 240930 송인용
+
+"""
+
 # app/main.py
 from fastapi import FastAPI
 from .rtsp_server import RTSPServer
@@ -18,11 +30,12 @@ SERVER_URL = 'http://10.32.187.108:5000'
 
 # Agent 등록 초기에 서버에 agent가 정상적으로 등록이 성공해야만 Agent 가 정상적으로 활성화 되도록 수정
 def register_agent():
+    rtsp_allowed_ip_range = '0.0.0.0/0'
     agent_info = {
         "agent_name": os.getenv("AGENT_ID", "default_agent"),
-        "agent_ip": rtsp_server.server.props.address,
         "rtsp_port": rtsp_server.server.props.service,
-        "stream_uri": rtsp_server.get_stream_uri(),
+        "mount_point": rtsp_server.mount_point,
+        "rtsp_allowed_ip_range": rtsp_allowed_ip_range
     }
     try:
         # 서버에 등록이 성공했을때, 이후 로직 구현

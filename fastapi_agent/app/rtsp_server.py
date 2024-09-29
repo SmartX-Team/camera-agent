@@ -1,3 +1,12 @@
+"""
+
+gstreamer 로 rtsp 서버 개방하도록 하는 코드
+
+최근 작성일 240930 송인용
+
+"""
+
+
 # app/rtsp_server.py
 import gi
 import threading
@@ -14,7 +23,8 @@ class RTSPServer(threading.Thread):
         self.server.props.service = str(port)
         self.is_streaming = False
 
-        self.server.props.address = '0.0.0.0'
+        self.server.props.address = '0.0.0.0' # 접근 허용 IP
+        self.mount_point = mount_point 
 
         self.factory = GstRtspServer.RTSPMediaFactory()
         self.factory.set_shared(True)

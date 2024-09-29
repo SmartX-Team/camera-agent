@@ -1,3 +1,11 @@
+"""
+
+gstreamer 로 현재 agent 가 동작하는 카메라 status 확인 및 관리하는 코드
+
+최근 작성일 240930 송인용
+
+"""
+
 # app/camera_manager.py
 
 import threading
