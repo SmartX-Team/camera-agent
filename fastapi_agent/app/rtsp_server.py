@@ -30,8 +30,8 @@ class RTSPServer(threading.Thread):
         self.factory.set_shared(True)
 
         # 초기화 시점에 빈 영상을 송출하도록 launch 라인 설정
-        pipeline_str = "( videotestsrc pattern=black ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
-        self.factory.set_launch(pipeline_str)
+        #pipeline_str = "( videotestsrc pattern=black ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
+        self.factory.set_launch(None)
 
         self.mount_points = self.server.get_mount_points()
         self.mount_points.add_factory(mount_point, self.factory)
@@ -46,7 +46,7 @@ class RTSPServer(threading.Thread):
             print("Streaming is already in progress.")
             return
         # 실제 카메라 데이터 송출
-        pipeline_str = f"( v4l2src device={device} ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
+        pipeline_str = f"( v4l2src device={device} ! videoconvert ! queue ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
         self.factory.set_launch(pipeline_str)
         self.is_streaming = True
         print(f"Streaming has started on device {device}.")
@@ -56,8 +56,8 @@ class RTSPServer(threading.Thread):
             print("Streaming is not in progress.")
             return
         # 빈 영상을 송출하는 파이프라인으로 전환
-        pipeline_str = "( videotestsrc pattern=black ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
-        self.factory.set_launch(pipeline_str)
+        #pipeline_str = "( videotestsrc pattern=black ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
+        self.factory.set_launch(None)
         self.is_streaming = False
         print("Streaming has stopped. A blank video is being transmitted.")
 

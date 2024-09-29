@@ -57,9 +57,6 @@ def register_agent():
         print(f"Failed to register agent: {e}")
         return None
 
-
-agent_id = register_agent()
-
 max_retries = 3  # 최대 재시도 횟수 설정
 retry_delay = 5  # 재시도 사이의 대기 시간 (초)
 
