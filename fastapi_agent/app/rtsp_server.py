@@ -12,7 +12,7 @@ import gi
 import threading
 gi.require_version('Gst', '1.0')
 gi.require_version('GstRtspServer', '1.0')
-from gi.repository import Gst, GstRtspServer, GObject
+from gi.repository import Gst, GstRtspServer, GObject, GLib
 
 
 # Gstreamer 의 CustomRTSPMediaFactory 상속 받아서 유저가 동적으로 API 호출하여 파이프라인 제어
@@ -20,31 +20,45 @@ class CustomRTSPMediaFactory(GstRtspServer.RTSPMediaFactory):
     def __init__(self, device, **properties):
         super(CustomRTSPMediaFactory, self).__init__(**properties)
         self.device = device
-        self.pipeline = None
+        self.media = None
 
     def do_create_element(self, url):
-        pipeline_str = f"( v4l2src device={self.device} ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 )"
-        self.pipeline = Gst.parse_launch(pipeline_str)
-        return self.pipeline
+        pipeline_str = f"( v4l2src device={self.device} ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
+        return Gst.parse_launch(pipeline_str)
+
+    def do_media_configure(self, media):
+        self.media = media
 
     def stop(self):
-        # 초기화 시점에 빈 영상을 송출하도록 launch 라인 설정
-        #pipeline_str = "( videotestsrc pattern=black ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay name=pay0 pt=96 )"
-        if self.pipeline:
-            self.pipeline.set_state(Gst.State.NULL)
-            self.pipeline = None
+        if self.media:
+            self.media.set_eos()
+            self.media.set_state(Gst.State.NULL)
+            self.media = None
 
-class RTSPServer:
+class RTSPServer(threading.Thread):
     def __init__(self, port=8554, mount_point="/test"):
+        super(RTSPServer, self).__init__()
         Gst.init(None)
         self.server = GstRtspServer.RTSPServer()
         self.server.props.service = str(port)
         self.mount_point = mount_point
         self.factory = None
         self.is_streaming = False
+        self.loop = GLib.MainLoop()
+        self.mounts = self.server.get_mount_points()
 
-    def start(self):
+    def run(self):
         self.server.attach(None)
+        print("RTSP server started.")
+        self.loop.run()
+
+    def start_server(self):
+        self.start()
+
+    def stop_server(self):
+        if self.loop.is_running():
+            self.loop.quit()
+            print("RTSP server stopped.")
 
     def start_stream(self, device='/dev/video0'):
         if self.is_streaming:
@@ -53,9 +67,9 @@ class RTSPServer:
 
         self.factory = CustomRTSPMediaFactory(device)
         self.factory.set_shared(True)
-        mounts = self.server.get_mount_points()
-        mounts.add_factory(self.mount_point, self.factory)
+        self.mounts.add_factory(self.mount_point, self.factory)
         self.is_streaming = True
+        print("Streaming started.")
 
     def stop_stream(self):
         if not self.is_streaming:
@@ -64,9 +78,8 @@ class RTSPServer:
 
         if self.factory:
             self.factory.stop()
-            # Mount point에서 팩토리 제거
-            mounts = self.server.get_mount_points()
-            mounts.remove_factory(self.mount_point)
+            self.mounts.remove_factory(self.mount_point)
             self.factory = None
+            print("Streaming stopped.")
 
         self.is_streaming = False
