@@ -15,7 +15,7 @@ DB 연결해서 처리하는 작업은 models 폴더에 있는 agent.py와 datab
 
 """
 
-
+import os
 from flask import Flask
 from flask_restful import Api
 from flasgger import Swagger
