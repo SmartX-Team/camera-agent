@@ -73,6 +73,7 @@ class CameraManager(threading.Thread):
             'agent_id': self.agent_id,
             'camera_status': camera_status
         }
+        print(data)
         try:
             response = requests.post(
                 f'{self.server_url}/agent/update_status',
