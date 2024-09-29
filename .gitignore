@@ -2,3 +2,4 @@
 app.log
 .pyc
 camera_agent/
+agents.json

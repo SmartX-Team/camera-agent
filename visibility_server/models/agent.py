@@ -16,7 +16,8 @@
 주석 작성일 240927 송인용
 
 """
-
+import uuid
+from datetime import datetime
 from tinydb import Query
 from connections import AgentTable
 
@@ -34,7 +35,7 @@ class AgentModel:
             'ip': ip,
             'port': port,
             'stream_uri': stream_uri ,
-            'camera_data': {},
+            'camera_status': [],
             'last_update': datetime.utcnow().isoformat(),
             'frame_transmission_enabled': False
         }

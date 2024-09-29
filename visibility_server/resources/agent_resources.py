@@ -19,8 +19,8 @@ class AgentRegister(Resource):
     def post(self):
         data = request.get_json()
         agent_name = data.get('agent_name')
-        ip = data.get('ip')
-        port = data.get('port')
+        ip = data.get('agent_ip')
+        port = data.get('rtsp_port')
         stream_uri = data.get('stream_uri')
 
         if not agent_name or not ip or not port:
