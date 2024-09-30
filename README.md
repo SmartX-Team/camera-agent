@@ -14,38 +14,60 @@ Camera Agent Project는 컨테이너 기반으로 MobileX Station에 부착된 �
 
 ## 프로젝트 주요 목표 및 작업 진행률
 - 전체 진행률: [X]% 완료
-  - 도커 이미지 기반으로 Agent 와 Agent 관리를 위한 Visiblity 서버 간에 통신 구현  (K8S 위에서 최종 배포 테스트 필요)
+  - 도커 이미지 기반으로 Agent 와 Agent 관리를 위한 visibility 서버 간에 통신 구현  (K8S 위에서 최종 배포 테스트 필요)
   - Agent의 영상간에 시간 동기화를 위해 PTP 서버 구현 및 동기화 테스트 (구현 진행중)
   - WebUI 기반으로 Agent 상태 조회 및 관리 (구현 필요)
   - Omnivese 에서 생성된 가상 카메라 정보 추가 및 동기화 (구현 필요)
   - 프로메테우스 서버와 연동하여 Agent의 인프라 사용량 관리
   - Argo CD , NIFI 등 그래픽 기반으로 전체 서비스 관리및 Live X+AI 서비스 구현
+ 
+
+## 프로젝트 관리
+Swagger 로 기본 API 사용법이 제공되긴하나 Omniverse 전체 API 를 관리하는 gitblog 생성하여 해당 Repo에 API 및 문서 이력 관리 진행 예정
 
 
 ## 전체 구조도
 
 ver 240930
-[여기에 프로젝트의 전체 구조를 설명하는 이미지를 삽입하세요]
+![Falcon 설계 고민사항](https://github.com/user-attachments/assets/79894cc2-47da-423d-92b1-04e40496439a)
+
+
+Agent 와 visibility Server 통신 
+![스크린샷 2024-10-01 오전 7 24 17](https://github.com/user-attachments/assets/058c4825-6750-4206-99ee-c04604bac9ed)
+
 
 ## 주요 컴포넌트 및 기능
 
 ### 1. Agent
-목적: [Agent의 주요 목적 설명]
+주요 스택: FAST API(gRPC로 대체될 수 있음), Gstreamer
+
+목적: Gstreamer 기반으로 웹캠과 같은 일반 카메라 장비를 IP 카메라 처럼 사용할수 있도록 지원하고, 카메라 상태를 주기적으로 Visibility Server 에 주기적으로 전송
+
+또한 스트리밍 on/off 등 동적으로 조절할 수 있는 API를 지원하여, 네트워크 상태등에 따라 유동적으로 생성되는 데이터 크기를 조절할 수 있음
+
+Rtsp 프로토콜로 스트리밍 되기에 여러 서비스에서 동시에 카메라의 데이터에 접근하기 수월해지고, 전체 시스템를 관리하기도 쉬어짐
+
+--
 
 #### 주요 기능:
-- [ ] 기능 1: [설명]
-- [x] 기능 2: [설명]
-- [ ] 기능 3: [설명]
+- [x] 기능 1: Gstreamer 기반으로 일반 카메라를 rtsp 프로토콜로 스트리밍할 수 있도록 지원
+- [ ] 기능 2: PTP 프로토콜로 Agent들간 시간 동기화
+- [ ] 기능 3: Prometheus 로 현재 Agent의 시스템 사용량 관리 
 
-#### 구현된 요구사항:
-- [x] 요구사항 1: [설명]
-- [x] 요구사항 2: [설명]
-- [ ] 요구사항 3: [설명]
+#### 구현된 세부 요구사항:
+- [x] 요구사항 1: Agent 생성시 Visibility Server 에 등록 API 호출
+- [x] 요구사항 2: 주기적으로 Visibility Server에 카메라 상태 업데이트
+- [x] 요구사항 3: FAST API 기반 스트리밍 송출 on/off 구현
+- [ ] 요구사항 4: PTP 프로토콜 동기화
+- [ ] 요구사항 5: PTP 프로토콜 동기화
 
 자세한 정보: [Agent/README.md](Agent/README.md)
 
-### 2. Backend Server
-목적: [Backend 서버의 주요 목적 설명]
+### 2. Visibility Server
+주요 스택: Flask, tinyDB
+
+목적: Agent 들의 현재 상태를 관리하고, 사용자가 사용하는 WebUI 를 위해 기본적인 CRUD 기능 지원
+
 
 #### 주요 기능:
 - [x] 기능 1: [설명]
