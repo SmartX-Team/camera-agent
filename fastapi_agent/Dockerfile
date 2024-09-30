@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y \
     python3-gi \
     python3-gi-cairo \
     gobject-introspection \
-    libcairo2-dev
+    libcairo2-dev \
+    ptpd
 
 # 작업 디렉토리 설정
 WORKDIR /app

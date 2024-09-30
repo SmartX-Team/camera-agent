@@ -14,10 +14,12 @@ FAST API 는 후에 gRPC 로 대체될 수 있음
 from fastapi import FastAPI
 from .rtsp_server import RTSPServer
 from .camera_manager import CameraManager
+from .ptp_synchronization import synchronize_with_ptp_server
 import threading
 import logging
 import os
 import requests
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -77,6 +79,9 @@ for attempt in range(max_retries):
 camera_manager = CameraManager(rtsp_server, agent_id, SERVER_URL)
 camera_manager.start()
 
+# PTP 동기화 시작
+ptp_thread = threading.Thread(target=synchronize_with_ptp_server, daemon=True)
+ptp_thread.start()
 
 @app.post("/start_stream")
 def start_stream():
