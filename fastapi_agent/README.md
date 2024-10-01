@@ -17,6 +17,10 @@ uvicorn app.main:app --reload --host 0.0.0.0
 
 curl -X POST http://localhost:8000/start_stream
 
+### PTP 서버 권한 허용
+
+sudo setcap cap_net_bind_service,cap_net_admin,cap_net_raw+ep $(which ptpd2)
+
 ---
 
 주요 기능

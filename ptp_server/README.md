@@ -8,3 +8,8 @@ docker build -t ptp-server .
 
 #### 도커 컨테이너 실행
 docker run -d --name ptp-server --cap-add=NET_ADMIN --net=host --restart always ptp-server
+
+
+### PTP 서버 사용
+
+sudo setcap cap_net_bind_service,cap_net_admin,cap_net_raw+ep $(which ptpd2)
