@@ -15,6 +15,18 @@ def get_default_interface():
 def check_ptpd_installed():
     return shutil.which('ptpd') is not None
 
+
+def get_ptp_status():
+    try:
+        # ptpd 프로세스 확인
+        ps_output = subprocess.check_output(["ps", "-ef"], text=True)
+        if "ptpd" in ps_output:
+            return "PTPd is running"
+        else:
+            return "PTPd is not running"
+    except subprocess.CalledProcessError:
+        return "Unable to check PTPd status"
+
 def synchronize_with_ptp_server():
     if not check_ptpd_installed():
         logging.error("ptpd is not installed. Please install it first.")
@@ -43,14 +55,9 @@ def synchronize_with_ptp_server():
                 logging.error("PTP process has terminated unexpectedly. Restarting...")
                 ptp_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
-            # PTP 동기화 상태 확인 (예: ptp_status 명령어 실행)
-            status_cmd = ['ptp_status']  # 실제 PTP 상태 확인 명령어로 변경 필요
-            try:
-                status_output = subprocess.check_output(status_cmd, text=True)
-                logging.info(f"PTP Status: {status_output.strip()}")
-            except subprocess.CalledProcessError as e:
-                logging.error(f"Failed to get PTP status: {e}")
-
+            # PTP 동기화 상태 확인
+            status = get_ptp_status()
+            logging.info(f"PTP Status: {status}")
             time.sleep(60)  # 1분마다 상태 확인
 
     except Exception as e:

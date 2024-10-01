@@ -19,6 +19,8 @@ curl -X POST http://localhost:8000/start_stream
 
 ### PTP 서버 권한 허용
 
+Agent 
+하드웨어 레벨, 특히 네트워크 인터페이스 카드 수준
 sudo setcap cap_net_bind_service,cap_net_admin,cap_net_raw+ep $(which ptpd2)
 
 ---
