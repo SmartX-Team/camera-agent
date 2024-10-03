@@ -88,15 +88,20 @@ $(document).ready(function() {
 
     function toggleFrameTransmission(agentId, enable) {
         $.ajax({
-            url: `${API_BASE_URL}/agents/${agentId}`,
-            method: 'PUT',
+            url: `${API_BASE_URL}/agent/update_status`,  
+            method: 'POST',  
             contentType: 'application/json',
-            data: JSON.stringify({ frame_transmission_enabled: enable }),
-            success: function() {
+            data: JSON.stringify({
+                agent_id: agentId,
+                frame_transmission_enabled: enable
+            }),
+            success: function(response) {
+                console.log('프레임 전송 설정이 변경되었습니다:', response);
                 showAgentDetails(agentId); // 상세 정보 새로고침
             },
             error: function(xhr, status, error) {
                 console.error('프레임 전송 설정 변경에 실패했습니다:', error);
+                alert('프레임 전송 설정 변경에 실패했습니다. 다시 시도해 주세요.');
             }
         });
     }

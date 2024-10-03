@@ -12,6 +12,7 @@ FAST API 는 후에 gRPC 로 대체될 수 있음
 
 # app/main.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from .rtsp_server import RTSPServer
 from .camera_manager import CameraManager
 from .ptp_synchronization import synchronize_with_ptp_server
@@ -25,6 +26,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+# CORS 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 모든 도메인 허용 (필요에 따라 특정 도메인으로 제한 가능)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 rtsp_server = RTSPServer()
 rtsp_server.start()
 SERVER_URL = 'http://10.32.187.108:5000'
@@ -76,7 +86,7 @@ for attempt in range(max_retries):
             exit(1)  # 프로그램 종료
 
 # CameraManager 초기화 및 시작
-camera_manager = CameraManager(rtsp_server, agent_id, SERVER_URL)
+camera_manager = CameraManager(rtsp_server, agent_id, SERVER_URL) 
 camera_manager.start()
 
 # PTP 동기화 시작
