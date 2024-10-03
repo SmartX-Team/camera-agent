@@ -39,6 +39,18 @@ Camera Status Visibility Server는 여러 데스크탑 에이전트로부터 카
 
 ## 설치 및 실행 방법
 
+이미지 빌드 예시
+docker build -t camera-status-server .
+
+컨테이너 실행 예시
+docker run -d -p 5111:5111 camera-status-server
+
+Swagger API 문서 접속
+/apidocs/
+
+접속 예시
+http://10.32.187.108:5111/apidocs/
+
 ### **필요한 패키지 설치**
 
 ```bash

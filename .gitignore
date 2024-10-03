@@ -1,5 +1,53 @@
+# Environments
 .env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Logs
+*.log
 app.log
-.pyc
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Project specific
 camera_agent/
 agents.json
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build outputs
+/build
+/dist
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~.nib

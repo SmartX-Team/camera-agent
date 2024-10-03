@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, CardHeader, CardContent, Badge } from '@/components/ui/';
+import { Table, Card, CardHeader, CardContent, Badge } from '../ui/';
 import { Camera, Wifi, Server } from 'lucide-react';
 
 const AgentList = () => {

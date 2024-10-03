@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent 관리 시스템</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h2>Navigation</h2>
+            <ul>
+                <li><a href="#" class="active">Agent 목록</a></li>
+                <li><a href="https://your-argocd-url.com" target="_blank">ArgoCD</a></li>
+                <!-- 추가적인 비저빌리티 사이트 링크들 -->
+            </ul>
+        </nav>
+        <main class="content">
+            <h1>Agent 관리 시스템</h1>
+            <div id="agent-list">
+                <h2>Agent 목록</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>이름</th>
+                            <th>IP</th>
+                            <th>Port</th>
+                            <th>Stream URI</th>
+                            <th>허용된 IP 범위</th>
+                            <th>카메라 상태</th>
+                            <th>마지막 업데이트</th>
+                            <th>프레임 전송</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agent-table-body">
+                        <!-- Agent 데이터가 여기에 동적으로 삽입됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
