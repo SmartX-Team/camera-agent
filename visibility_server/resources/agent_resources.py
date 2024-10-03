@@ -1,5 +1,5 @@
 """
-서버와 agent들이 통신할때 사용하는 API 모음
+Visibility 서버와 agent들이 통신할때 사용하는 API 모음
 
 """
 
@@ -10,10 +10,7 @@ from datetime import datetime
 
 from models.agent import AgentModel
 
-import logging
-
-
-""" 처음 Agent 가 Visiblity 서버에 접속할때 알림
+""" 처음 Agent 가 Visibility 서버에 접속할때 알림
 현재는 내부 DB에 처음 agent가 등록할때 관련 정보 저장
 """
 class AgentRegister(Resource):
@@ -31,9 +28,22 @@ class AgentRegister(Resource):
         # stream_url 설정
         stream_uri = f'rtsp://{host_ip}:{port}{mount_point}' 
 
-        # Agent 등록
-        agent_id = AgentModel.add_agent(agent_name, host_ip, port, stream_uri, rtsp_allowed_ip_range)
-        return {'message': 'Agent registered successfully', 'agent_id': agent_id}, 201
+        # 에이전트 등록 또는 기존 에이전트 반환
+        agent_id, agent_data, existing = AgentModel.add_agent(
+            agent_name, host_ip, port, stream_uri, rtsp_allowed_ip_range
+        )
+
+        if existing:
+            return {
+                'message': 'Existing agent found, returning existing information',
+                'agent_id': agent_id,
+                'agent_data': agent_data
+            }, 200
+        else:
+            return {
+                'message': 'Agent registered successfully',
+                'agent_id': agent_id
+            }, 201
     
     # Agent 등록시 Host의 IP를 가져오는 함수
     def get_client_ip(self):
@@ -71,7 +81,6 @@ class AgentGetConfig(Resource):
     def get(self):
         agent_id = request.args.get('agent_id')
         if not agent_id:
-            app.logger.error('agent_id is missing in request')
             return {'message': 'agent_id is required'}, 400
 
         agent = AgentModel.get_agent(agent_id)

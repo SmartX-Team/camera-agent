@@ -27,11 +27,7 @@
                             <th>IP</th>
                             <th>Port</th>
                             <th>Stream URI</th>
-                            <th>허용된 IP 범위</th>
-                            <th>카메라 상태</th>
-                            <th>마지막 업데이트</th>
-                            <th>프레임 전송</th>
-                            <th>작업</th>
+                            <th>상세보기</th>
                         </tr>
                     </thead>
                     <tbody id="agent-table-body">
@@ -40,6 +36,23 @@
                 </table>
             </div>
         </main>
+        <aside class="details-panel">
+            <h2>Agent 상세 정보</h2>
+            <div id="agent-details">
+                <!-- 선택된 Agent의 상세 정보가 여기에 표시됩니다 -->
+                <p>Agent를 선택하면 상세 정보가 여기에 표시됩니다.</p>
+            </div>
+            <div id="agent-controls" style="display: none;">
+                <h3>Agent 제어</h3>
+                <button id="toggleFrameTransmission">프레임 전송 토글</button>
+                <button id="openVideoStream">스트림 보기</button>
+            </div>
+    <!-- 비디오 플레이어 모달 -->
+            <div id="video-preview" style="display: none;">
+                <h3>비디오 미리보기</h3>
+                <video id="videoPlayer" controls style="width: 100%;"></video>
+            </div>
+        </aside>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

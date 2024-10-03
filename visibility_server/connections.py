@@ -1,5 +1,8 @@
+"""
+모든 접속정보나 환경변수 통합 관리하는 파일
+"""
+
 import os
-from tinydb import TinyDB
 import logging
 
 # 필요한 경우 다른 패키지 임포트 (e.g., kafka-python)
@@ -14,11 +17,3 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 logger.info(f"Database file path: {DATABASE_FILE}")
-
-try:
-    db = TinyDB(DATABASE_FILE)
-    db.truncate()
-    AgentTable = db.table('agents')
-    logger.info("Database initialized successfully.")
-except Exception as e:
-    logger.error(f"Failed to initialize database: {e}")

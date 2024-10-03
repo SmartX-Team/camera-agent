@@ -5,6 +5,6 @@ COPY src/index.html /usr/share/nginx/html/
 COPY src/styles.css /usr/share/nginx/html/
 COPY src/main.js /usr/share/nginx/html/
 
-EXPOSE 80
+EXPOSE 8111
 
 CMD ["nginx", "-g", "daemon off;"]

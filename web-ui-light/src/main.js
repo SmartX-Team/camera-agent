@@ -1,10 +1,22 @@
 $(document).ready(function() {
-    const API_BASE_URL = 'http://your-backend-ip:5111/api'; // 백엔드 API 주소를 실제 IP와 포트로 변경하세요
+    const API_BASE_URL = 'http://10.32.187.108:5111/webui'; // 백엔드 API 주소
+    let currentAgentId = null;
 
-    // Agent 목록 조회
+    function formatCameraStatus(cameraStatus) {
+        if (!cameraStatus || cameraStatus.length === 0) {
+            return 'No cameras';
+        }
+        return cameraStatus.map(camera => {
+            if (camera.device) {
+                return `Device: ${camera.device}`;
+            }
+            return JSON.stringify(camera);
+        }).join('<br>');
+    }
+
     function fetchAgents() {
         $.ajax({
-            url: `${API_BASE_URL}/agents`,
+            url: `${API_BASE_URL}/get_agent_list`,
             method: 'GET',
             success: function(agents) {
                 const tableBody = $('#agent-table-body');
@@ -16,14 +28,8 @@ $(document).ready(function() {
                             <td>${agent.ip}</td>
                             <td>${agent.port}</td>
                             <td>${agent.stream_uri}</td>
-                            <td>${agent.rtsp_allowed_ip_range}</td>
-                            <td>${agent.camera_status}</td>
-                            <td>${agent.last_update}</td>
-                            <td>${agent.frame_transmission_enabled ? 'Yes' : 'No'}</td>
                             <td>
-                                <button onclick="toggleFrameTransmission(${agent.agent_id}, ${!agent.frame_transmission_enabled})">
-                                    ${agent.frame_transmission_enabled ? '비활성화' : '활성화'}
-                                </button>
+                                <button onclick="showAgentDetails('${agent.agent_id}')">상세보기</button>
                             </td>
                         </tr>
                     `);
@@ -35,25 +41,101 @@ $(document).ready(function() {
         });
     }
 
-    // 프레임 전송 토글
-    window.toggleFrameTransmission = function(agentId, enable) {
+    window.showAgentDetails = function(agentId) {
+        currentAgentId = agentId;
+        $.ajax({
+            url: `${API_BASE_URL}/agents/${agentId}`,
+            method: 'GET',
+            success: function(agent) {
+                const detailsContent = `
+                    <table>
+                        <tr><th>Agent ID</th><td>${agent.agent_id}</td></tr>
+                        <tr><th>이름</th><td>${agent.agent_name}</td></tr>
+                        <tr><th>IP</th><td>${agent.ip}</td></tr>
+                        <tr><th>Port</th><td>${agent.port}</td></tr>
+                        <tr><th>Stream URI</th><td>${agent.stream_uri}</td></tr>
+                        <tr><th>허용된 IP 범위</th><td>${agent.rtsp_allowed_ip_range || 'N/A'}</td></tr>
+                        <tr><th>카메라 상태</th><td>${formatCameraStatus(agent.camera_status)}</td></tr>
+                        <tr><th>마지막 업데이트</th><td>${agent.last_update}</td></tr>
+                        <tr><th>프레임 전송</th><td>${agent.frame_transmission_enabled ? '활성화' : '비활성화'}</td></tr>
+                    </table>
+                `;
+                $('#agent-details').html(detailsContent);
+                $('#agent-controls').show();
+                $('#toggleFrameTransmission').text(agent.frame_transmission_enabled ? '프레임 전송 비활성화' : '프레임 전송 활성화');
+                $('#video-preview').hide();
+            },
+            error: function(xhr, status, error) {
+                console.error('Agent 상세 정보를 불러오는데 실패했습니다:', error);
+            }
+        });
+    };
+
+    $('#toggleFrameTransmission').click(function() {
+        if (currentAgentId) {
+            $.ajax({
+                url: `${API_BASE_URL}/agents/${currentAgentId}`,
+                method: 'GET',
+                success: function(agent) {
+                    toggleFrameTransmission(currentAgentId, !agent.frame_transmission_enabled);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Agent 정보를 불러오는데 실패했습니다:', error);
+                }
+            });
+        }
+    });
+
+    function toggleFrameTransmission(agentId, enable) {
         $.ajax({
             url: `${API_BASE_URL}/agents/${agentId}`,
             method: 'PUT',
             contentType: 'application/json',
             data: JSON.stringify({ frame_transmission_enabled: enable }),
             success: function() {
-                fetchAgents(); // 목록 새로고침
+                showAgentDetails(agentId); // 상세 정보 새로고침
             },
             error: function(xhr, status, error) {
                 console.error('프레임 전송 설정 변경에 실패했습니다:', error);
             }
         });
-    };
+    }
 
-    // 주기적으로 Agent 목록 업데이트 (예: 10초마다)
-    setInterval(fetchAgents, 10000);
+    $('#openVideoStream').click(function() {
+        if (currentAgentId) {
+            $.ajax({
+                url: `${API_BASE_URL}/agents/${currentAgentId}`,
+                method: 'GET',
+                success: function(agent) {
+                    openVideoStream(agent.stream_uri);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Agent 정보를 불러오는데 실패했습니다:', error);
+                }
+            });
+        }
+    });
 
-    // 초기 Agent 목록 로드
-    fetchAgents();
+    function openVideoStream(streamUri) {
+        const videoPlayer = document.getElementById('videoPlayer');
+        
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(streamUri);
+            hls.attachMedia(videoPlayer);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                videoPlayer.play();
+            });
+        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+            videoPlayer.src = streamUri;
+            videoPlayer.addEventListener('loadedmetadata', function() {
+                videoPlayer.play();
+            });
+        }
+
+        $('#video-preview').show();
+    }
+
+    setInterval(fetchAgents, 10000); // 10초마다 Agent 목록 업데이트
+    fetchAgents(); // 초기 Agent 목록 로드
 });

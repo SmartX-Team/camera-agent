@@ -19,42 +19,51 @@
 import uuid
 from datetime import datetime
 from tinydb import Query
-from connections import AgentTable
+from database import db_instance
 
 class AgentModel:
     
     @staticmethod
     def add_agent(agent_name, ip, port, stream_uri, rtsp_allowed_ip_range):
         """
-        새로운 에이전트를 데이터베이스에 추가하는 함수.
+        새로운 에이전트를 추가하거나 기존 에이전트를 반환하는 함수.
+        IP를 기준으로 기존 에이전트 검색
+
+        기존 에이전트가 있으면 해당 정보를 반환하고 없으면 새롭게 DB에 등록
+
         """
-        agent_id = str(uuid.uuid4())
-        agent_data = {
-            'agent_id': agent_id,
-            'agent_name': agent_name,
-            'ip': ip,
-            'port': port,
-            'stream_uri': stream_uri ,
-            'rtsp_allowed_ip_range': rtsp_allowed_ip_range,
-            'camera_status': [],
-            'last_update': datetime.utcnow().isoformat(),
-            'frame_transmission_enabled': False
-        }
-        AgentTable.insert(agent_data)
-        return agent_id
+        existing_agent = db_instance.agent_table.get(Query().ip == ip)
+        if existing_agent:
+            return existing_agent['agent_id'], existing_agent, True  # True는 기존 에이전트임을 나타냄
+        else:
+            # 새로운 에이전트를 추가
+            agent_id = str(uuid.uuid4())
+            agent_data = {
+                'agent_id': agent_id,
+                'agent_name': agent_name,
+                'ip': ip,
+                'port': port,
+                'stream_uri': stream_uri,
+                'rtsp_allowed_ip_range': rtsp_allowed_ip_range,
+                'camera_status': [],
+                'last_update': datetime.utcnow().isoformat(),
+                'frame_transmission_enabled': False
+            }
+            db_instance.agent_table.insert(agent_data)
+            return agent_id, agent_data, False
 
     @staticmethod
     def upsert_agent(agent_data):
-        AgentTable.upsert(agent_data, Query().agent_id == agent_data['agent_id'])
+        db_instance.agent_table.upsert(agent_data, Query().agent_id == agent_data['agent_id'])
 
     @staticmethod
     def get_agent(agent_id):
-        return AgentTable.get(Query().agent_id == agent_id)
+        return db_instance.agent_table.get(Query().agent_id == agent_id)
 
     @staticmethod
     def update_agent(agent_id, data):
-        AgentTable.update(data, Query().agent_id == agent_id)
+        db_instance.agent_table.update(data, Query().agent_id == agent_id)
 
     @staticmethod
     def get_all_agents():
-        return AgentTable.all()
+        return db_instance.agent_table.all()

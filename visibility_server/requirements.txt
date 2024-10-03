@@ -1,5 +1,6 @@
 flask
 flask-restful
+flask_cors
 tinydb
 flasgger
 pytest

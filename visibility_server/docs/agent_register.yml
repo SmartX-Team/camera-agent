@@ -1,29 +1,35 @@
-# docs/agent_register.yml
-
+# Swagger 자동생성 yaml docs/agent_register.yml
 post:
   tags:
     - Agent
   summary: Register a new agent
   description: Agent registers itself with the server
+  consumes:
+    - application/json
+  produces:
+    - application/json
   parameters:
     - in: body
       name: body
+      description: Agent registration data
       schema:
         type: object
         required:
           - agent_name
-          - ip
-          - port
+          - rtsp_port
         properties:
           agent_name:
             type: string
             description: Name of the agent
-          ip:
-            type: string
-            description: IP address of the agent
-          port:
+          rtsp_port:
             type: integer
-            description: Port number of the agent
+            description: RTSP port number of the agent
+          mount_point:
+            type: string
+            description: "Optional mount point (default: '/test')"
+          rtsp_allowed_ip_range:
+            type: string
+            description: "Optional RTSP allowed IP range (default: '0.0.0.0/0')"
   responses:
     201:
       description: Agent registered successfully
@@ -34,6 +40,40 @@ post:
             type: string
           agent_id:
             type: string
+    200:
+      description: Existing agent found, returning existing information
+      schema:
+        type: object
+        properties:
+          message:
+            type: string
+          agent_id:
+            type: string
+          agent_data:
+            type: object
+            description: Existing agent data
+            properties:
+              agent_id:
+                type: string
+              agent_name:
+                type: string
+              ip:
+                type: string
+              port:
+                type: integer
+              stream_uri:
+                type: string
+              rtsp_allowed_ip_range:
+                type: string
+              camera_status:
+                type: array
+                items:
+                  type: string
+              last_update:
+                type: string
+                format: date-time
+              frame_transmission_enabled:
+                type: boolean
     400:
       description: Bad request
       schema:

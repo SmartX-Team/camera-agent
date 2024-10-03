@@ -1,0 +1,45 @@
+get:
+  tags:
+    - WebUI
+  summary: 특정 Agent의 상세 정보 조회
+  description: 주어진 agent_id에 해당하는 Agent의 상세 정보를 조회합니다.
+  parameters:
+    - name: agent_id
+      in: path
+      required: true
+      type: string
+      description: 조회할 Agent의 고유 ID
+  responses:
+    200:
+      description: 성공적으로 Agent 정보를 조회함
+      schema:
+        type: object
+        properties:
+          agent_id:
+            type: string
+          agent_name:
+            type: string
+          ip:
+            type: string
+          port:
+            type: string
+          stream_uri:
+            type: string
+          rtsp_allowed_ip_range:
+            type: string
+          last_update:
+            type: string
+            format: date-time
+          camera_status:
+            type: array
+            items:
+              type: object
+          frame_transmission_enabled:
+            type: boolean
+    404:
+      description: 주어진 ID의 Agent를 찾을 수 없음
+      schema:
+        type: object
+        properties:
+          message:
+            type: string

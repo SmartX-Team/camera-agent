@@ -3,6 +3,7 @@ import uuid
 from tinydb import TinyDB, Query
 from tinydb.storages import JSONStorage
 from tinydb.middlewares import CachingMiddleware
+from connections import DATABASE_FILE
 
 class Database:
     _instance = None
@@ -12,10 +13,8 @@ class Database:
             cls._instance = super(Database, cls).__new__(cls)
             cls._instance._initialize()
         return cls._instance
-
+# 싱글톤 연결 설정
     def _initialize(self):
-        # 환경 변수 또는 설정 값 로드
-        DATABASE_FILE = os.getenv('DATABASE_FILE', 'agents.json')
         self.db = TinyDB(DATABASE_FILE, storage=CachingMiddleware(JSONStorage))
         self.agent_table = self.db.table('agents')
 
@@ -54,3 +53,5 @@ class Database:
         Agent = Query()
         return self.agent_table.search(Agent.agent_name == agent_name)
 
+# 싱글톤 연결 설정
+db_instance = Database()

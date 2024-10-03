@@ -18,15 +18,18 @@ DB 연결해서 처리하는 작업은 models 폴더에 있는 agent.py와 datab
 import os
 from flask import Flask
 from flask_restful import Api
+from flask_cors import CORS
 from flasgger import Swagger
 
 from resources.agent_resources import AgentUpdateStatus, AgentGetConfig, AgentRegister
 from resources.user_resources import GetCameraStatus, SetFrameTransmission
+from resources.webui_resources import GetAgentList, GetAgentDetails
 
 import logging
 from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
+CORS(app)
 api = Api(app)
 
 # Swagger 설정
@@ -58,12 +61,17 @@ logger.addHandler(handler)
 app.logger = logger
 
 
-# 엔드포인트 등록 (agent가 호출하는 api들은 /agent/ , 일반 유저가 호출하는 api들은 /api/ 엔드 포인트로 분리함)
+# 엔드포인트 등록 (agent가 호출하는 api들은 /agent/ , 유저가 agent에 호출하는 api들은 /api/ 엔드 포인트로, webui 에서의 view 기능들은 /webui/  분리함)
 api.add_resource(AgentRegister, '/agent/register')
 api.add_resource(AgentUpdateStatus, '/agent/update_status')
 api.add_resource(AgentGetConfig, '/agent/get_config')
+
 api.add_resource(GetCameraStatus, '/api/get_camera_status')
 api.add_resource(SetFrameTransmission, '/api/set_frame_transmission')
+
+api.add_resource(GetAgentList, '/webui/get_agent_list')
+api.add_resource(GetAgentDetails, '/webui/agents/<string:agent_id>')
+#api.add_resource(UpdateAgentFrameTransmission, '/webui/agents/<string:agent_id>/frame_transmission')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
