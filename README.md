@@ -45,6 +45,11 @@ ver 240930
 Agent 와 visibility Server 통신 
 ![스크린샷 2024-10-01 오전 7 24 17](https://github.com/user-attachments/assets/058c4825-6750-4206-99ee-c04604bac9ed)
 
+Web-UI 동작 예시
+
+<img width="1438" alt="스크린샷 2024-10-04 오전 10 00 21" src="https://github.com/user-attachments/assets/b2b0cffb-10de-4698-a709-785e92342537">
+
+
 
 ## 주요 컴포넌트 및 기능
 
