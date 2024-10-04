@@ -37,7 +37,7 @@ app.add_middleware(
 
 rtsp_server = RTSPServer()
 rtsp_server.start()
-SERVER_URL = 'http://10.32.187.108:5000'
+SERVER_URL = 'http://10.32.187.108:5111'
 
 
 # Agent 등록 초기에 서버에 agent가 정상적으로 등록이 성공해야만 Agent 가 정상적으로 활성화 되도록 수정
@@ -46,19 +46,26 @@ def register_agent():
     agent_info = {
         "agent_name": os.getenv("AGENT_ID", "default_agent"),
         "rtsp_port": rtsp_server.server.props.service,
+        "agent_port": os.getenv("AGENT_PORT", 8000),
         "mount_point": rtsp_server.mount_point,
         "rtsp_allowed_ip_range": rtsp_allowed_ip_range
     }
     try:
         # 서버에 등록이 성공했을때, 이후 로직 구현
         response = requests.post(f"{SERVER_URL}/agent/register", json=agent_info)
-        if response.status_code == 200 or response.status_code == 201 :
-            print("Agent registered successfully.")
-            # 서버로부터 추가 정보를 수신(할당된 id, 프로메테우스 현재 서버 주소등)
-            data = response.json()
+        data = response.json()
+        if response.status_code == 201:
+            # 새로 등록된 경우
             agent_id = data.get("agent_id")
-
+            print("Agent registered successfully.")
             logger.info(f"Agent registered successfully. Agent ID: {agent_id}")
+            return agent_id
+
+        elif response.status_code == 200:
+            # 이미 등록된 경우
+            agent_id = data.get("agent_id")
+            print("Agent already registered. Using existing registration.")
+            logger.info(f"Agent already registered. Agent ID: {agent_id}")
             return agent_id
         else:
             print(f"Agent 등록 실패: {response.status_code}")
@@ -66,7 +73,7 @@ def register_agent():
             return None
 
     except Exception as e:
-        print(f"Failed to register agent: {e}")
+        logger.error(f"Failed to register agent: {e}")
         return None
 
 max_retries = 3  # 최대 재시도 횟수 설정

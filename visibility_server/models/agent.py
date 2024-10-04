@@ -24,7 +24,7 @@ from database import db_instance
 class AgentModel:
     
     @staticmethod
-    def add_agent(agent_name, ip, port, stream_uri, rtsp_allowed_ip_range):
+    def add_agent(agent_name, ip, rtsp_port, agent_port, stream_uri, rtsp_allowed_ip_range):
         """
         새로운 에이전트를 추가하거나 기존 에이전트를 반환하는 함수.
         IP를 기준으로 기존 에이전트 검색
@@ -42,7 +42,8 @@ class AgentModel:
                 'agent_id': agent_id,
                 'agent_name': agent_name,
                 'ip': ip,
-                'port': port,
+                'rtsp_port': rtsp_port,
+                'agent_port': agent_port,
                 'stream_uri': stream_uri,
                 'rtsp_allowed_ip_range': rtsp_allowed_ip_range,
                 'camera_status': [],

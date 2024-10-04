@@ -19,18 +19,19 @@ class AgentRegister(Resource):
         data = request.get_json()
         agent_name = data.get('agent_name')
         host_ip = self.get_client_ip()
-        port = data.get('rtsp_port')
+        rtsp_port = data.get('rtsp_port')
         mount_point = data.get('mount_point', '/test')
         rtsp_allowed_ip_range = data.get('rtsp_allowed_ip_range', '0.0.0.0/0')
+        agent_port = data.get('agent_port', 8000)
 
-        if not agent_name or not host_ip or not port:
-            return {'message': 'agent_name, ip, and port are required'}, 400
+        if not agent_name or not host_ip or not rtsp_port or not agent_port:
+            return {'message': 'agent_name, ip, rtsp_port, and agent_port are required'}, 400
         # stream_url 설정
-        stream_uri = f'rtsp://{host_ip}:{port}{mount_point}' 
+        stream_uri = f'rtsp://{host_ip}:{rtsp_port}{mount_point}' 
 
         # 에이전트 등록 또는 기존 에이전트 반환
         agent_id, agent_data, existing = AgentModel.add_agent(
-            agent_name, host_ip, port, stream_uri, rtsp_allowed_ip_range
+            agent_name, host_ip, rtsp_port, agent_port, stream_uri, rtsp_allowed_ip_range
         )
 
         if existing:

@@ -18,14 +18,14 @@ class Database:
         self.db = TinyDB(DATABASE_FILE, storage=CachingMiddleware(JSONStorage))
         self.agent_table = self.db.table('agents')
 
-    def add_agent(self, agent_name, ip, port, camera_data):
-        # UUID 함수로 자동 ID 생성
+    def add_agent(self, agent_name, ip, rtsp_port, agent_port, camera_data):
         agent_id = str(uuid.uuid4())
         self.agent_table.insert({
             'agent_id': agent_id,
             'agent_name': agent_name,
             'ip': ip,
-            'port': port,
+            'rtsp_port': rtsp_port,
+            'agent_port': agent_port,
             'camera_data': camera_data
         })
         return agent_id

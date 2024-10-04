@@ -1,5 +1,5 @@
 $(document).ready(function() {
-    const API_BASE_URL = 'http://10.32.187.108:5111/webui'; // 백엔드 API 주소
+    const API_BASE_URL = 'http://10.32.187.108:5111'; // 백엔드 API 주소
     let currentAgentId = null;
 
     function formatCameraStatus(cameraStatus) {
@@ -16,7 +16,7 @@ $(document).ready(function() {
 
     function fetchAgents() {
         $.ajax({
-            url: `${API_BASE_URL}/get_agent_list`,
+            url: `${API_BASE_URL}/webui/get_agent_list`,
             method: 'GET',
             success: function(agents) {
                 const tableBody = $('#agent-table-body');
@@ -44,7 +44,7 @@ $(document).ready(function() {
     window.showAgentDetails = function(agentId) {
         currentAgentId = agentId;
         $.ajax({
-            url: `${API_BASE_URL}/agents/${agentId}`,
+            url: `${API_BASE_URL}/webui/agents/${agentId}`,
             method: 'GET',
             success: function(agent) {
                 const detailsContent = `
@@ -74,7 +74,7 @@ $(document).ready(function() {
     $('#toggleFrameTransmission').click(function() {
         if (currentAgentId) {
             $.ajax({
-                url: `${API_BASE_URL}/agents/${currentAgentId}`,
+                url: `${API_BASE_URL}/webui/agents/${currentAgentId}`,
                 method: 'GET',
                 success: function(agent) {
                     toggleFrameTransmission(currentAgentId, !agent.frame_transmission_enabled);
@@ -88,7 +88,7 @@ $(document).ready(function() {
 
     function toggleFrameTransmission(agentId, enable) {
         $.ajax({
-            url: `${API_BASE_URL}/agent/update_status`,  
+            url: `${API_BASE_URL}/api/set_frame_transmission`,  
             method: 'POST',  
             contentType: 'application/json',
             data: JSON.stringify({
