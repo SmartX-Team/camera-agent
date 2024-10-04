@@ -5,3 +5,4 @@ tinydb
 flasgger
 pytest
 nats-py
+requests

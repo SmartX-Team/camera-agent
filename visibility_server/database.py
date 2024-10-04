@@ -1,4 +1,3 @@
-import os
 import uuid
 from tinydb import TinyDB, Query
 from tinydb.storages import JSONStorage

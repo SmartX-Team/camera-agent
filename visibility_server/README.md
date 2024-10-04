@@ -4,6 +4,9 @@
 
 Camera Status Visibility Server는 여러 데스크탑 에이전트로부터 카메라 상태 정보를 수집하고 관리하며, 사용자에게 API를 통해 카메라 상태 조회 및 제어 기능을 제공합니다.
 
+DB는 등록된 Agent 들 정보 관리정도로만 사용하고 있는데 지금은 간단하게 tinyDB 사용해서 서버 컨테이너 새로 생성되면, 데이터 초기화하도록 해둠
+만약 필요하면 MobileX 에 배포한 PostgreSQL 같은 DB 사용하면됨
+
 ## 주요 기능
 
 - **에이전트 상태 업데이트**: 에이전트는 주기적으로 자신의 카메라 상태를 서버에 전송합니다.
@@ -29,13 +32,13 @@ Camera Status Visibility Server는 여러 데스크탑 에이전트로부터 카
 
 - **`resources/`**: API 엔드포인트(Resource)를 정의하는 모듈을 포함합니다.
   - **`agent_resources.py`**: 에이전트 통신 관련 API 엔드포인트를 정의
-  - **`user_resources.py`**: 사용자 관련 API 엔드포인트를 정의합니다.
-
+  - **`user_resources.py`**: 사용자가 agent 조작 관련 API 엔드포인트를 정의
+  - **`webui_resources.py`**: webui 에서 간단한 CRUD 관련 API 엔드포인트를 정의
 - **`utils/`**: 공용 함수나 유틸리티 코드를 포함합니다.
   - **`common.py`**: 프로젝트 전반에서 사용하는 공통 함수 묶음
 
 - **`docs/`**: Swagger 문서 파일을 저장합니다.
-  - **`agent_get_config.yml`**, **`agent_update_status.yml`** 등: 각 API 엔드포인트에 대한 Swagger 문서입니다.
+  - **`agent_get_config.yml`**, **`agent_update_status.yml`** 등: 각 API 엔드포인트에 대한 Swagger 문서
 
 ## 설치 및 실행 방법
 
