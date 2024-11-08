@@ -22,49 +22,77 @@ from tinydb import Query
 from database import db_instance
 
 class AgentModel:
-    
     @staticmethod
-    def add_agent(agent_name, ip, rtsp_port, agent_port, stream_uri, rtsp_allowed_ip_range):
+    def add_agent(agent_info):
         """
-        새로운 에이전트를 추가하거나 기존 에이전트를 반환하는 함수.
-        IP를 기준으로 기존 에이전트 검색
-
-        기존 에이전트가 있으면 해당 정보를 반환하고 없으면 새롭게 DB에 등록
-
+        새로운 에이전트를 데이터베이스에 추가하는 함수.
         """
-        existing_agent = db_instance.agent_table.get(Query().ip == ip)
-        if existing_agent:
-            return existing_agent['agent_id'], existing_agent, True  # True는 기존 에이전트임을 나타냄
+        agent_id = str(uuid.uuid4())
+        agent_data = {
+            'agent_id': agent_id,
+            'agent_name': agent_info.get('agent_name'),
+            'ip': agent_info.get('ip'),
+            'streaming_method': agent_info.get('streaming_method'),
+            'agent_port': agent_info.get('agent_port', 8000),
+            'last_update': datetime.utcnow().isoformat(),
+            'frame_transmission_enabled': False,
+            'camera_status': [],
+            # 추가적인 공통 필드들
+        }
+
+        if agent_info.get('streaming_method') == 'RTSP':
+            agent_data.update({
+                'rtsp_port': agent_info.get('rtsp_port'),
+                'mount_point': agent_info.get('mount_point'),
+                'rtsp_allowed_ip_range': agent_info.get('rtsp_allowed_ip_range'),
+                'stream_uri': agent_info.get('stream_uri'),
+            })
+        elif agent_info.get('streaming_method') == 'KAFKA':
+            agent_data.update({
+                'kafka_topic': agent_info.get('kafka_topic'),
+                'bootstrap_servers': agent_info.get('bootstrap_servers'),
+                'frame_rate': agent_info.get('frame_rate'),
+                'image_width': agent_info.get('image_width'),
+                'image_height': agent_info.get('image_height'),
+            })
         else:
-            # 새로운 에이전트를 추가
-            agent_id = str(uuid.uuid4())
-            agent_data = {
-                'agent_id': agent_id,
-                'agent_name': agent_name,
-                'ip': ip,
-                'rtsp_port': rtsp_port,
-                'agent_port': agent_port,
-                'stream_uri': stream_uri,
-                'rtsp_allowed_ip_range': rtsp_allowed_ip_range,
-                'camera_status': [],
-                'last_update': datetime.utcnow().isoformat(),
-                'frame_transmission_enabled': False
-            }
-            db_instance.agent_table.insert(agent_data)
-            return agent_id, agent_data, False
+            # 지원하지 않는 스트리밍 방식일 경우 예외 처리
+            raise ValueError(f"Unsupported streaming method: {agent_info.get('streaming_method')}")
+
+        # 데이터베이스에 에이전트 정보 저장
+        db_instance.agent_table.insert(agent_data)
+        return agent_id
 
     @staticmethod
     def upsert_agent(agent_data):
-        db_instance.agent_table.upsert(agent_data, Query().agent_id == agent_data['agent_id'])
+        Agent = Query()
+        db_instance.agent_table.upsert(agent_data, Agent.agent_id == agent_data['agent_id'])
 
     @staticmethod
     def get_agent(agent_id):
-        return db_instance.agent_table.get(Query().agent_id == agent_id)
+        Agent = Query()
+        result = db_instance.agent_table.search(Agent.agent_id == agent_id)
+        if result:
+            return result[0]
+        else:
+            return None
 
     @staticmethod
     def update_agent(agent_id, data):
-        db_instance.agent_table.update(data, Query().agent_id == agent_id)
+        Agent = Query()
+        db_instance.agent_table.update(data, Agent.agent_id == agent_id)
+
+    @staticmethod
+    def delete_agent(agent_id):
+        Agent = Query()
+        db_instance.agent_table.remove(Agent.agent_id == agent_id)
 
     @staticmethod
     def get_all_agents():
         return db_instance.agent_table.all()
+
+    @staticmethod
+    def get_agent_by_name(agent_name):
+        Agent = Query()
+        result = db_instance.agent_table.search(Agent.agent_name == agent_name)
+        return result

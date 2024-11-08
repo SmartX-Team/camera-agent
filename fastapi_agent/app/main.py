@@ -64,37 +64,30 @@ async def lifespan(app: FastAPI):
 
     # Agent 등록 함수 정의
     def register_agent():
-        rtsp_allowed_ip_range = '0.0.0.0/0'
         agent_info = {
             "agent_name": os.getenv("AGENT_ID", "default_agent"),
-            "rtsp_port": app.state.rtsp_server.server.props.service,
+            "streaming_method": STREAMING_METHOD,
             "agent_port": os.getenv("AGENT_PORT", 8000),
-            "mount_point": app.state.rtsp_server.mount_point,
-            "rtsp_allowed_ip_range": rtsp_allowed_ip_range
         }
-        logger.info(f"Agent configuration: {agent_info}")
+
+        if STREAMING_METHOD == 'RTSP':
+            agent_info.update({
+                "rtsp_port": app.state.streaming_server.server.props.service,
+                "mount_point": app.state.streaming_server.mount_point,
+                "rtsp_allowed_ip_range": '0.0.0.0/0',
+            })
+        elif STREAMING_METHOD == 'KAFKA':
+            agent_info.update({
+                "kafka_topic": KAFKA_TOPIC,
+                "bootstrap_servers": KAFKA_BOOTSTRAP_SERVERS,
+                "frame_rate": FRAME_RATE,
+                "image_width": IMAGE_WIDTH,
+                "image_height": IMAGE_HEIGHT,
+            })
+
         try:
-            # 서버에 등록이 성공했을 때, 이후 로직 구현
             response = requests.post(f"{SERVER_URL}/agent/register", json=agent_info)
-            data = response.json()
-            if response.status_code == 201:
-                # 새로 등록된 경우
-                agent_id = data.get("agent_id")
-                print("Agent registered successfully.")
-                logger.info(f"Agent registered successfully. Agent ID: {agent_id}")
-                return agent_id
-
-            elif response.status_code == 200:
-                # 이미 등록된 경우
-                agent_id = data.get("agent_id")
-                print("Agent already registered. Using existing registration.")
-                logger.info(f"Agent already registered. Agent ID: {agent_id}")
-                return agent_id
-            else:
-                print(f"Agent 등록 실패: {response.status_code}")
-                logger.error(f"Agent registration failed: {response.status_code} {response.text}")
-                return None
-
+            # 응답 처리 로직
         except Exception as e:
             logger.error(f"Failed to register agent: {e}")
             return None
