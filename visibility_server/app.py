@@ -74,4 +74,5 @@ api.add_resource(GetAgentDetails, '/webui/agents/<string:agent_id>')
 #api.add_resource(UpdateAgentFrameTransmission, '/webui/agents/<string:agent_id>/frame_transmission')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get('FLASK_RUN_PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

@@ -38,7 +38,7 @@ class CameraManager(threading.Thread):
             time.sleep(self.update_interval)
 
     def discover_cameras(self):
-        logger.info("Discovering cameras using GStreamer...")
+        #logger.info("Discovering cameras using GStreamer...")
         previous_cameras = set(cam['device'] for cam in self.cameras)
         self.cameras = []
         video_devices = glob.glob('/dev/video*')
@@ -46,7 +46,7 @@ class CameraManager(threading.Thread):
         for device in video_devices:
             if self.is_camera_available(device):
                 self.cameras.append({'device': device})
-                logger.info(f"Camera found: {device}")
+                #logger.info(f"Camera found: {device}")
             else:
                 logger.info(f"Device {device} is not a valid camera.")
 

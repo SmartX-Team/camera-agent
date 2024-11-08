@@ -7,12 +7,14 @@ RUN apt-get update && apt-get install -y \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad \
+    gstreamer1.0-rtsp \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav \
     libgirepository1.0-dev \
     gir1.2-gst-rtsp-server-1.0 \
     python3-gi \
     python3-gi-cairo \
+    python3-gst-1.0 \ 
     gobject-introspection \
     libcairo2-dev \
     ptpd

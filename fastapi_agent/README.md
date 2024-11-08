@@ -63,7 +63,12 @@ docker run --rm -it \
     -e RTSP_SERVER_PORT=8554 \
     agent
 
-
+docker run -e STREAMING_METHOD=KAFKA \
+           -e KAFKA_TOPIC=my_topic \
+           -e KAFKA_BOOTSTRAP_SERVERS=broker:9092 \
+           -e FRAME_RATE=5 \
+           -e IMAGE_WIDTH=640 \
+           -e IMAGE_HEIGHT=480 \
 
 아래 내용은 설계 변경으로 FAST API 로 기능 대체함
 --------------------------------------------
