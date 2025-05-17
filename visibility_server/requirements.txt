@@ -6,3 +6,16 @@ flasgger
 pytest
 nats-py
 requests
+gunicorn==21.2.0
+
+# Metrics and Monitoring
+prometheus-client==0.17.1
+prometheus-flask-exporter==0.22.4
+APScheduler==3.10.4
+
+# Runtime Dependencies
+Werkzeug==2.3.7
+MarkupSafe==2.1.3
+Jinja2==3.1.2
+itsdangerous==2.1.2
+click==8.1.7

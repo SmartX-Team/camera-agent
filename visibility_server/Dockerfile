@@ -18,13 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 코드 복사
 COPY . .
 
-# 환경 변수 설정
-ENV FLASK_APP=app.py
-ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_RUN_PORT=5111
-
 # 5111 포트 노출
 EXPOSE 5111
 
-# 애플리케이션 실행
-CMD ["flask", "run"]
+# 단일 프로세스로 gunicorn 실행
+CMD ["gunicorn", "--bind", "0.0.0.0:5111", "--workers", "1", "app:app"]

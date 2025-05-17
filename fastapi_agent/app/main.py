@@ -28,6 +28,7 @@ import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global camera_manager, ptp_thread
@@ -42,6 +43,8 @@ async def lifespan(app: FastAPI):
     app.state.streaming_method = STREAMING_METHOD
     app.state.kafka_topic = KAFKA_TOPIC
     app.state.bootstrap_servers = KAFKA_BOOTSTRAP_SERVERS
+
+    app.state.start_time = time.time()
 
     # RTSP 서버 초기화 (RTSP 방식일 경우)
     if STREAMING_METHOD == 'RTSP':
@@ -67,7 +70,7 @@ async def lifespan(app: FastAPI):
         agent_info = {
             "agent_name": os.getenv("AGENT_ID", "default_agent"),
             "streaming_method": STREAMING_METHOD,
-            "agent_port": os.getenv("AGENT_PORT", 8000),
+            "agent_port": int(os.getenv("AGENT_PORT", 8000)),
         }
 
         if STREAMING_METHOD == 'RTSP':
@@ -84,12 +87,30 @@ async def lifespan(app: FastAPI):
                 "image_width": IMAGE_WIDTH,
                 "image_height": IMAGE_HEIGHT,
             })
+        else:
+            logger.error(f"Unsupported STREAMING_METHOD: {STREAMING_METHOD}")
+            return None
 
         try:
+            logger.info(f"Registering agent with info: {agent_info}")
             response = requests.post(f"{SERVER_URL}/agent/register", json=agent_info)
-            # 응답 처리 로직
+            logger.info(f"Agent registration response status: {response.status_code}")
+            logger.debug(f"Agent registration response content: {response.text}")
+
+            if response.status_code == 201:
+                data = response.json()
+                agent_id = data.get("agent_id")
+                if agent_id:
+                    logger.info(f"Agent registered successfully. Agent ID: {agent_id}")
+                    return agent_id
+                else:
+                    logger.error(f"'agent_id' not found in response: {data}")
+                    return None
+            else:
+                logger.error(f"Agent registration failed with status code {response.status_code}: {response.text}")
+                return None
         except Exception as e:
-            logger.error(f"Failed to register agent: {e}")
+            logger.exception("Failed to register agent due to an exception")
             return None
 
     max_retries = 3  # 최대 재시도 횟수 설정
@@ -106,16 +127,15 @@ async def lifespan(app: FastAPI):
                 time.sleep(retry_delay)
             else:
                 logger.error("Max registration attempts reached. Exiting program.")
-                # FastAPI 애플리케이션에서 종료하려면 예외를 발생시킨다.
                 raise RuntimeError("Max registration attempts reached.")
-            
+                
     kafka_params = {
-        'topic': KAFKA_TOPIC,
-        'bootstrap_servers': KAFKA_BOOTSTRAP_SERVERS,
-        'frame_rate': FRAME_RATE,
-        'image_width': IMAGE_WIDTH,
-        'image_height': IMAGE_HEIGHT,
-    }
+            'topic': KAFKA_TOPIC,
+            'bootstrap_servers': KAFKA_BOOTSTRAP_SERVERS,
+            'frame_rate': FRAME_RATE,
+            'image_width': IMAGE_WIDTH,
+            'image_height': IMAGE_HEIGHT,
+        }
 
     # CameraManager 초기화 및 시작
     camera_manager = CameraManager(
@@ -126,6 +146,7 @@ async def lifespan(app: FastAPI):
         kafka_params=kafka_params
     )
     camera_manager.start()
+    app.state.camera_manager = camera_manager
 
     # PTP 동기화 시작
     #ptp_thread = threading.Thread(target=synchronize_with_ptp_server, daemon=True)
@@ -153,13 +174,25 @@ app.add_middleware(
 
 @app.post("/start_stream")
 def start_stream():
-    app.state.rtsp_server.start_stream()
-    return {"message": "스트리밍을 시작"}
+    if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
+        app.state.streaming_server.start_stream()
+        return {"message": "RTSP 스트리밍을 시작"}
+    elif app.state.streaming_method == 'KAFKA' and app.state.camera_manager.kafka_streamer:
+        app.state.camera_manager.kafka_streamer.start_stream()
+        return {"message": "Kafka 스트리밍을 시작"}
+    else:
+        return {"message": "스트리밍 서버가 초기화되지 않았습니다."}
 
 @app.post("/stop_stream")
 def stop_stream():
-    app.state.rtsp_server.stop_stream()
-    return {"message": "스트리밍을 중지하고 빈 영상을 송출"}
+    if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
+        app.state.streaming_server.stop_stream()
+        return {"message": "RTSP 스트리밍을 중지하고 빈 영상을 송출"}
+    elif app.state.streaming_method == 'KAFKA' and app.state.camera_manager.kafka_streamer:
+        app.state.camera_manager.kafka_streamer.stop_stream()
+        return {"message": "Kafka 스트리밍을 중지"}
+    else:
+        return {"message": "스트리밍 서버가 초기화되지 않았습니다."}
 
 @app.get("/camera_info")
 def get_camera_info():
@@ -172,7 +205,7 @@ def get_camera_info():
         response.update({
             "stream_uri": app.state.streaming_server.get_stream_uri(),
         })
-    elif app.state.streaming_method == 'KAFKA' and camera_manager.kafka_streamer:
+    elif app.state.streaming_method == 'KAFKA' and app.state.camera_manager.kafka_streamer:
         response.update({
             "kafka_topic": app.state.kafka_topic,
             "bootstrap_servers": app.state.bootstrap_servers,
@@ -182,18 +215,25 @@ def get_camera_info():
 @app.post("/shutdown")
 def shutdown():
     # 애플리케이션 종료
-    camera_manager.stop()
-    app.state.rtsp_server.loop.quit()
+    app.state.camera_manager.stop()
+    if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
+        app.state.streaming_server.loop.quit()
     return {"message": "Agent를 종료"}
 
 @app.get("/health")
 async def health_check():
     try:
-        rtsp_status = app.state.rtsp_server.check_status()
+        if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
+            streaming_status = app.state.streaming_server.check_status()
+        elif app.state.streaming_method == 'KAFKA' and app.state.camera_manager.kafka_streamer:
+            streaming_status = app.state.camera_manager.kafka_streamer.running
+        else:
+            streaming_status = False
+
         camera_status = app.state.camera_manager.check_status()
         return {
-            "status": "ok" if rtsp_status and camera_status else "degraded",
-            "rtsp_server": rtsp_status,
+            "status": "ok" if streaming_status and camera_status else "degraded",
+            "streaming_server": streaming_status,
             "camera": camera_status,
             "last_error": None,
             "uptime": time.time() - app.state.start_time

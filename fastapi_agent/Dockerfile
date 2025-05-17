@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y \
     gstreamer1.0-rtsp \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav \
+    v4l-utils \
+    gstreamer1.0-plugins-base-apps \
     libgirepository1.0-dev \
     gir1.2-gst-rtsp-server-1.0 \
     python3-gi \
@@ -28,6 +30,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ./app ./app
 
+RUN chmod 666 /dev/video0 || true
 # 필요한 포트 노출
 EXPOSE 8554 8000
 

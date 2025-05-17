@@ -28,9 +28,13 @@ from resources.webui_resources import GetAgentList, GetAgentDetails
 import logging
 from logging.handlers import RotatingFileHandler
 
+#metrics.py 에서 정의한 메트릭 설정 함수들 import
+from metrics import setup_metrics, track_metric, update_agent_metrics, record_camera_status
+
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
+setup_metrics(app)
 
 # Swagger 설정
 app.config['SWAGGER'] = {
@@ -59,6 +63,20 @@ logger.addHandler(handler)
 
 # Flask 앱의 로거 설정
 app.logger = logger
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    app.logger.error(f"An error occurred: {str(error)}")
+    return {"error": str(error)}, getattr(error, 'code', 500)
+
+# 리소스 등록 전에 메트릭 데코레이터 적용
+AgentRegister.post = track_metric(AgentRegister.post)
+AgentUpdateStatus.post = track_metric(AgentUpdateStatus.post)
+AgentGetConfig.get = track_metric(AgentGetConfig.get)
+GetCameraStatus.get = track_metric(GetCameraStatus.get)
+SetFrameTransmission.post = track_metric(SetFrameTransmission.post)
+GetAgentList.get = track_metric(GetAgentList.get)
+GetAgentDetails.get = track_metric(GetAgentDetails.get)
 
 
 # 엔드포인트 등록 (agent가 호출하는 api들은 /agent/ , 유저가 agent에 호출하는 api들은 /api/ 엔드 포인트로, webui 에서의 view 기능들은 /webui/  분리함)
