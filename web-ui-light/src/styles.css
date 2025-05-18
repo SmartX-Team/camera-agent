@@ -3,6 +3,7 @@ body, html {
     padding: 0;
     font-family: Arial, sans-serif;
     height: 100%;
+    background-color: #eef1f5; /* 전체 페이지 배경색 약간 추가 */
 }
 
 .container {
@@ -11,14 +12,19 @@ body, html {
 }
 
 .sidebar {
-    width: 200px;
-    background-color: #f4f4f4;
+    width: 220px; /* 약간 넓게 */
+    background-color: #ffffff; /* 밝은 배경 */
     padding: 20px;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05); /* 그림자 약간 연하게 */
+    border-right: 1px solid #e0e0e0;
 }
 
 .sidebar h2 {
     margin-top: 0;
+    color: #333;
+    font-size: 1.4em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
 }
 
 .sidebar ul {
@@ -32,97 +38,335 @@ body, html {
 
 .sidebar ul li a {
     text-decoration: none;
-    color: #333;
+    color: #555; /* 약간 진하게 */
+    display: block; /* 클릭 영역 확장 */
+    padding: 8px 10px; /* 패딩 추가 */
+    border-radius: 4px; /* 부드러운 모서리 */
+}
+
+.sidebar ul li a:hover {
+    background-color: #e9ecef; /* 호버 효과 */
+    color: #007bff;
 }
 
 .sidebar ul li a.active {
     font-weight: bold;
-    color: #4CAF50;
+    background-color: #007bff; /* 활성 링크 배경색 */
+    color: #ffffff; /* 활성 링크 글자색 */
 }
 
 .content {
     flex-grow: 1;
-    padding: 20px;
-    overflow-y: auto;
+    padding: 25px; /* 패딩 약간 늘림 */
+    overflow-y: auto; /* 내용 많을 시 스크롤 */
 }
 
 h1, h2 {
     color: #333;
 }
+h1 { font-size: 1.8em; margin-bottom: 20px; }
+h2 { font-size: 1.5em; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 8px;}
+
 
 table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 테이블에도 약간의 그림자 */
+    background-color: #fff; /* 테이블 배경 */
 }
 
 th, td {
-    padding: 10px;
+    padding: 12px 15px; /* 셀 패딩 늘림 */
     border: 1px solid #ddd;
     text-align: left;
+    font-size: 0.95em; /* 가독성 위한 폰트 크기 조정 */
 }
 
 th {
-    background-color: #f4f4f4;
+    background-color: #f8f9fa; /* 헤더 배경색 변경 */
+    font-weight: 600; /* 헤더 글꼴 두께 */
+    color: #495057;
 }
 
-button {
-    padding: 5px 10px;
-    background-color: #4CAF50;
-    color: white;
+/* 버튼 기본 스타일 */
+button, .button { /* .button 클래스도 동일하게 적용 */
+    padding: 8px 15px; /* 버튼 패딩 조정 */
     border: none;
+    border-radius: 4px;
     cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease-in-out; /* 부드러운 전환 효과 */
+    margin: 2px; /* 버튼 간 간격 */
 }
 
+/* 버튼 종류별 스타일 (main.js에서 사용한 클래스 기반) */
+.button-primary { background-color: #007bff; color: white; }
+.button-primary:hover { background-color: #0056b3; }
+
+.button-danger { background-color: #dc3545; color: white; }
+.button-danger:hover { background-color: #c82333; }
+
+.button-details, .button-default { background-color: #6c757d; color: white; }
+.button-details:hover, .button-default:hover { background-color: #545b62; }
+
+/* 기존 button 태그에 대한 스타일 (필요시 일반 버튼용으로 유지 또는 위 클래스 사용) */
+button {
+    background-color: #28a745; /* 초록색 계열로 변경 */
+    color: white;
+}
 button:hover {
-    background-color: #45a049;
+    background-color: #218838;
 }
 
 
-#agent-details table {
-    width: 100%;
+/* 상세 정보 패널 스타일 */
+.details-panel {
+    width: 450px;
+    min-width: 350px;
+    background-color: #ffffff;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+    border-left: 1px solid #e0e0e0;
+
+    position: fixed; /* 또는 absolute, 레이아웃에 따라 */
+    right: -470px; /* 너비 + 패딩 등 고려하여 화면 밖으로 (초기 숨김) */
+    top: 0;
+    bottom: 0;
+    height: 100vh; /* 화면 전체 높이 */
+    transition: right 0.3s ease-in-out; /* 부드러운 애니메이션 */
+    z-index: 900;
 }
 
-#agent-details th,
-#agent-details td {
-    padding: 8px;
+.details-panel.open {
+    right: 0; /* 열릴 때 위치 */
+}
+
+#closeDetailsPanelButton {
+    background-color: #f8f9fa;
+    color: #333;
     border: 1px solid #ddd;
+    padding: 5px 10px;
+}
+#closeDetailsPanelButton:hover {
+    background-color: #e2e6ea;
 }
 
-#agent-details th {
-    background-color: #f4f4f4;
-    font-weight: bold;
-    width: 40%;
+#agent-details {
+    margin-bottom: 20px;
+}
+
+#agent-details table { /* 에이전트 기본 정보 테이블 */
+    width: 100%;
+    margin-top: 10px;
+}
+
+#agent-details table th { /* 기본 정보 테이블 th */
+    width: 30%; /* 레이블 너비 */
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+#agent-details table td { /* 기본 정보 테이블 td */
+    background-color: #fff;
 }
 
 
-/* 모달 스타일 */
+.cameras-list-container {
+    margin-top: 20px;
+}
+
+.cameras-list-container h3 { /* "카메라 목록" 제목 스타일 */
+    font-size: 1.2em;
+    color: #333;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+}
+.cameras-list-container h3 .fa-camera { /* Font Awesome 아이콘 사용 시 */
+    margin-right: 8px;
+}
+
+
+.camera-item-vertical {
+    background-color: #fdfdfd; /* 약간 밝은 배경 */
+    border: 1px solid #e9e9e9;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.camera-item-vertical .camera-item-header h4 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #0069d9; /* 카메라 이름/ID 제목 색상 */
+    font-size: 1.1em;
+    display: flex; /* 아이콘과 텍스트 정렬 */
+    align-items: center;
+}
+.camera-item-vertical .camera-item-header h4 .fa-video { /* Font Awesome 아이콘 */
+    margin-right: 8px;
+    color: #007bff;
+}
+
+
+.camera-item-vertical .camera-item-body .prop-group,
+.camera-item-vertical .camera-item-body p {
+    margin: 8px 0;
+    font-size: 0.9em;
+    line-height: 1.5;
+    display: flex; /* 레이블과 값을 가로로 배치하기 위한 준비 */
+    flex-wrap: wrap; /* 값이 길 경우 줄바꿈 */
+}
+
+.camera-item-vertical .prop-label {
+    display: inline-block;
+    min-width: 130px; /* 레이블 최소 너비 */
+    font-weight: 600;
+    color: #555;
+    margin-right: 10px;
+    flex-shrink: 0; /* 레이블 너비 줄어들지 않도록 */
+}
+
+.camera-item-vertical .prop-value {
+    flex-grow: 1; /* 값이 남은 공간을 채우도록 */
+    word-break: break-all; /* 긴 값 줄바꿈 */
+}
+
+/* 스트림 상세 정보 내부의 레이블 (Topic, Servers) */
+.stream-details-vertical strong {
+    font-weight: normal; /* prop-label에서 이미 bold 처리하므로 일반으로 */
+    min-width: auto; /* 여기서는 prop-label의 너비 규칙을 따르지 않음 */
+    margin-right: 5px;
+}
+.stream-details-vertical .copyable,
+.stream-details-vertical .link-open-stream {
+    font-size: 0.95em;
+}
+.stream-details-vertical .link-open-stream .fa-play-circle,
+.stream-details-vertical .copyable .fa-copy { /* Font Awesome 아이콘 */
+    margin-left: 5px;
+}
+
+
+/* 프레임 전송 버튼 아이콘 */
+.button-toggle-frame .fas {
+    margin-right: 5px;
+}
+
+/* 버튼 스타일 추가 (button-success) */
+.button-success { background-color: #28a745; color: white; }
+.button-success:hover { background-color: #218838; }
+
+
+/* 시각적 태그 스타일 */
+.tag {
+    display: inline-block;
+    padding: 0.3em 0.6em; /* 패딩 조정 */
+    font-size: 0.8em; /* 폰트 크기 조정 */
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem; /* 모서리 둥글기 */
+    margin: 2px 0;
+}
+
+/* 상태 태그 */
+.tag-status-active, .tag-status-streaming { background-color: #28a745; color: white; }
+.tag-status-inactive { background-color: #6c757d; color: white; }
+.tag-status-error { background-color: #dc3545; color: white; }
+.tag-status-unknown { background-color: #ffc107; color: #212529; } /* 노란색 배경에 검은 글씨 */
+
+/* 타입 태그 */
+.tag-type-rgb { background-color: #17a2b8; color: white; }
+.tag-type-depth { background-color: #343a40; color: white; }
+.tag-type-thermal { background-color: #fd7e14; color: white; }
+.tag-type-fisheye { background-color: #6f42c1; color: white; }
+.tag-type-unknown { background-color: #ffc107; color: #212529; }
+
+/* 환경 태그 */
+.tag-env-real { background-color: #007bff; color: white; }
+.tag-env-virtual { background-color: #e83e8c; color: white; }
+.tag-env-unknown { background-color: #ffc107; color: #212529; }
+
+/* 프로토콜 태그 */
+.tag-protocol-rtsp { background-color: #20c997; color: white; }
+.tag-protocol-kafka { background-color: #6610f2; color: white; }
+.tag-protocol-ros2_topic { background-color: #fd7e14; color: white; } /* 열화상과 색 겹침, 필요시 수정 */
+.tag-protocol-unknown { background-color: #ffc107; color: #212529; }
+
+/* 복사 가능한 텍스트 스타일 */
+.copyable {
+    cursor: pointer;
+    text-decoration: underline;
+    color: #007bff;
+    font-style: italic;
+}
+.copyable:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+
+/* 비디오 미리보기 영역 */
+#video-preview {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+#video-preview h3 { margin-top: 0; }
+
+#videoPlayer {
+    width: 100%;
+    /* max-width: 600px; 이미 HTML에 있음 */
+    background-color: #000; /* 비디오 로딩 전 배경 */
+    border: 1px solid #999;
+}
+
+#closeVideoPreviewButton { /* 비디오 닫기 버튼 스타일 */
+    background-color: #6c757d;
+    color: white;
+    margin-top: 10px;
+}
+#closeVideoPreviewButton:hover {
+    background-color: #5a6268;
+}
+
+/* 모달 스타일 (만약 사용한다면, 현재 HTML/JS에서는 직접 사용 안함) */
 .modal {
     display: none;
     position: fixed;
-    z-index: 1;
+    z-index: 1000; /* 다른 요소들 위에 오도록 */
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0,0,0,0.4);
+    background-color: rgba(0,0,0,0.5); /* 반투명도 약간 진하게 */
 }
 
 .modal-content {
     background-color: #fefefe;
-    margin: 15% auto;
-    padding: 20px;
-    border: 1px solid #888;
+    margin: 10% auto; /* 화면 중앙에 가깝게 */
+    padding: 25px;
+    border: 1px solid #bbb;
+    border-radius: 5px; /* 모달에도 둥근 모서리 */
     width: 80%;
-    max-width: 600px;
+    max-width: 500px; /* 최대 너비 조정 */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-.close {
+.close { /* 모달 닫기 버튼 */
     color: #aaa;
     float: right;
     font-size: 28px;
     font-weight: bold;
+    line-height: 1;
 }
 
 .close:hover,
@@ -132,17 +376,12 @@ button:hover {
     cursor: pointer;
 }
 
-#videoPlayer {
-    width: 100%;
-    max-width: 600px;
-}
-
-.stream-link {
+/* 기존 .stream-link는 .copyable 또는 a 태그에 직접 스타일링으로 대체 가능 */
+/* .stream-link {
     color: #007bff;
     text-decoration: underline;
     cursor: pointer;
 }
-
 .stream-link:hover {
     text-decoration: none;
-}
+} */

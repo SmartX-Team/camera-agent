@@ -1,5 +1,5 @@
 $(document).ready(function() {
-    const API_BASE_URL = 'http://10.32.187.108:5111'; // 백엔드 API 주소
+    const API_BASE_URL = '${API_BASE_URL}';// 백엔드 API 주소
     let currentAgentId = null;
 
     function formatCameraStatus(cameraStatus) {

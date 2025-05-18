@@ -1,146 +1,400 @@
 $(document).ready(function() {
-    const API_BASE_URL = '${API_BASE_URL}';// 백엔드 API 주소
-    let currentAgentId = null;
 
-    function formatCameraStatus(cameraStatus) {
-        if (!cameraStatus || cameraStatus.length === 0) {
-            return 'No cameras';
-        }
-        return cameraStatus.map(camera => {
-            if (camera.device) {
-                return `Device: ${camera.device}`;
-            }
-            return JSON.stringify(camera);
-        }).join('<br>');
+    console.log("main.js.template: API_BASE_URL will be replaced by entrypoint script.");
+
+
+    const EFFECTIVE_API_BASE_URL = '${API_BASE_URL}'; //
+    console.log("Effective API Base URL set to:", EFFECTIVE_API_BASE_URL);
+
+    let currentAgentId = null;
+    const $detailsPanel = $('#detailsPanel');
+
+    // 로거 객체 (파일 상단으로 이동)
+    const logger = {
+        info: function(message, ...optionalParams) { console.log('[INFO]', message, ...optionalParams); },
+        warn: function(message, ...optionalParams) { console.warn('[WARN]', message, ...optionalParams); },
+        error: function(message, ...optionalParams) { console.error('[ERROR]', message, ...optionalParams); }
+    };
+
+    // --- Helper Functions ---
+    function showAlert(message, type = 'error') {
+        logger[type === 'error' ? 'error' : 'info'](message);
+        alert(message); // 실제 운영 환경에서는 더 나은 UI의 알림 사용 권장
     }
 
+    async function copyToClipboard(text) {
+        if (!navigator.clipboard) {
+            showAlert('클립보드 복사 기능을 지원하지 않는 브라우저입니다.', 'warn');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            logger.info('클립보드에 복사되었습니다: ' + text);
+            // 사용자에게 피드백을 주는 작은 UI 요소 (토스트 메시지 등) 사용 고려
+        } catch (err) {
+            showAlert('클립보드 복사에 실패했습니다.', 'error');
+        }
+    }
+
+    // --- Agent List ---
     function fetchAgents() {
         $.ajax({
-            url: `${API_BASE_URL}/webui/get_agent_list`,
+            url: `${EFFECTIVE_API_BASE_URL}/webui/get_agent_list`,
             method: 'GET',
+            dataType: 'json',
             success: function(agents) {
+
                 const tableBody = $('#agent-table-body');
                 tableBody.empty();
+
+                if (!agents || !Array.isArray(agents) || agents.length === 0) {
+                    logger.warn('/webui/get_agent_list 응답이 비어있거나 유효한 Agent 목록이 아닙니다.', agents);
+                    tableBody.append('<tr><td colspan="5">사용 가능한 에이전트가 없습니다.</td></tr>');
+                    return;
+                }
+
                 agents.forEach(function(agent) {
+                    if (!agent || typeof agent !== 'object') {
+                        logger.warn('Agent 목록 중 유효하지 않은 Agent 데이터 발견:', agent);
+                        return; // 다음 agent로 넘어감
+                    }
+
+                    const agentName = agent.agent_name || 'N/A';
+                    const agentIp = agent.ip || 'N/A';
+                    const agentPort = agent.agent_port || 'N/A';
+                    const agentId = agent.agent_id;
+
+                    let cameraDisplayInfo = agent.camera_summary || '정보 없음';
+                    if (!agent.camera_summary && (agent.total_camera_count !== undefined || agent.active_camera_count !== undefined)) {
+                        cameraDisplayInfo = `Total: ${agent.total_camera_count || 0}, Active: ${agent.active_camera_count || 0}`;
+                    }
+
+                    if (!agentId) {
+                        logger.error('Agent 데이터에 agent_id가 없습니다:', agent);
+                        return; 
+                    }
+
                     tableBody.append(`
                         <tr>
-                            <td>${agent.agent_name}</td>
-                            <td>${agent.ip}</td>
-                            <td>${agent.port}</td>
-                            <td>${agent.stream_uri}</td>
+                            <td>${agentName}</td>
+                            <td>${agentIp}</td>
+                            <td>${agentPort}</td>
+                            <td>${cameraDisplayInfo}</td>
                             <td>
-                                <button onclick="showAgentDetails('${agent.agent_id}')">상세보기</button>
+                                <button class="button-details" data-agent-id="${agentId}">상세보기</button>
                             </td>
                         </tr>
                     `);
                 });
             },
             error: function(xhr, status, error) {
-                console.error('Agent 목록을 불러오는데 실패했습니다:', error);
+                logger.error('Agent 목록 로드 실패:', status, error, xhr.responseText);
+                $('#agent-table-body').empty().append('<tr><td colspan="5">Agent 목록 로드 실패. 콘솔 로그를 확인하세요.</td></tr>');
             }
         });
     }
 
-    window.showAgentDetails = function(agentId) {
-        currentAgentId = agentId;
-        $.ajax({
-            url: `${API_BASE_URL}/webui/agents/${agentId}`,
-            method: 'GET',
-            success: function(agent) {
-                const detailsContent = `
-                    <table>
-                        <tr><th>Agent ID</th><td>${agent.agent_id}</td></tr>
-                        <tr><th>이름</th><td>${agent.agent_name}</td></tr>
-                        <tr><th>IP</th><td>${agent.ip}</td></tr>
-                        <tr><th>Port</th><td>${agent.port}</td></tr>
-                        <tr><th>Stream URI</th><td>${agent.stream_uri}</td></tr>
-                        <tr><th>허용된 IP 범위</th><td>${agent.rtsp_allowed_ip_range || 'N/A'}</td></tr>
-                        <tr><th>카메라 상태</th><td>${formatCameraStatus(agent.camera_status)}</td></tr>
-                        <tr><th>마지막 업데이트</th><td>${agent.last_update}</td></tr>
-                        <tr><th>프레임 전송</th><td>${agent.frame_transmission_enabled ? '활성화' : '비활성화'}</td></tr>
-                    </table>
-                `;
-                $('#agent-details').html(detailsContent);
-                $('#agent-controls').show();
-                $('#toggleFrameTransmission').text(agent.frame_transmission_enabled ? '프레임 전송 비활성화' : '프레임 전송 활성화');
-                $('#video-preview').hide();
-            },
-            error: function(xhr, status, error) {
-                console.error('Agent 상세 정보를 불러오는데 실패했습니다:', error);
-            }
-        });
-    };
-
-    $('#toggleFrameTransmission').click(function() {
-        if (currentAgentId) {
-            $.ajax({
-                url: `${API_BASE_URL}/webui/agents/${currentAgentId}`,
-                method: 'GET',
-                success: function(agent) {
-                    toggleFrameTransmission(currentAgentId, !agent.frame_transmission_enabled);
-                },
-                error: function(xhr, status, error) {
-                    console.error('Agent 정보를 불러오는데 실패했습니다:', error);
-                }
-            });
+    $('#agent-table-body').on('click', '.button-details', function() {
+        const agentId = $(this).data('agent-id');
+        if (agentId) {
+            showAgentDetails(agentId);
+            $detailsPanel.addClass('open');
+        } else {
+            logger.error('상세보기 버튼에서 agent-id를 찾을 수 없습니다.');
         }
     });
 
-    function toggleFrameTransmission(agentId, enable) {
+    // --- Agent Details ---
+    function renderCamerasTable(cameras, agentId) {
+        // logger 객체가 이 함수 스코프 또는 상위 스코프에 정의되어 있다고 가정합니다.
+        // 예: const logger = { info: console.log, warn: console.warn, error: console.error };
+
+        if (!cameras || !Array.isArray(cameras) || cameras.length === 0) {
+            return '<p style="padding: 10px; text-align: center;">이 에이전트에 등록된 카메라가 없습니다.</p>';
+        }
+
+        let camerasHtml = `
+            <div class="cameras-list-container">
+                <h3><i class="fas fa-camera"></i> 카메라 목록 (${cameras.length}개)</h3>
+        `; // 테이블 대신 div 컨테이너 사용
+
+        cameras.forEach(camera => {
+            if (!camera || typeof camera !== 'object') {
+                logger.warn('카메라 목록 중 유효하지 않은 카메라 데이터 발견:', camera);
+                return; // 다음 카메라로
+            }
+
+            let streamDetailsHtml = 'N/A';
+            const protocol = (camera.stream_protocol || '').toLowerCase();
+
+            if (camera.stream_details && typeof camera.stream_details === 'object') {
+                switch (protocol) {
+                    case 'rtsp':
+                        streamDetailsHtml = camera.stream_details.rtsp_uri ?
+                            `<a href="#" class="link-open-stream" data-uri="${camera.stream_details.rtsp_uri}" data-protocol="rtsp" title="스트림 보기: ${camera.stream_details.rtsp_uri}">
+                                ${camera.stream_details.rtsp_uri} <i class="fas fa-play-circle"></i>
+                             </a>` : 'RTSP URI 없음';
+                        break;
+                    case 'kafka':
+                        streamDetailsHtml = `
+                            <strong>Topic:</strong> <span class="copyable" title="클릭하여 복사: ${camera.stream_details.kafka_topic || ''}">${camera.stream_details.kafka_topic || 'N/A'} <i class="fas fa-copy"></i></span><br>
+                            <strong>Servers:</strong> <span class="copyable" title="클릭하여 복사: ${camera.stream_details.kafka_bootstrap_servers || ''}">${camera.stream_details.kafka_bootstrap_servers || 'N/A'} <i class="fas fa-copy"></i></span>`;
+                        break;
+                    case 'ros2_topic': // 오타 수정: 'ros2_topic'
+                        streamDetailsHtml = `<strong>Topic:</strong> <span class="copyable" title="클릭하여 복사: ${camera.stream_details.ros2_topic_name || ''}">${camera.stream_details.ros2_topic_name || 'N/A'} <i class="fas fa-copy"></i></span>`;
+                        break;
+                    default:
+                        streamDetailsHtml = `알 수 없는 프로토콜 (${camera.stream_protocol || '정보 없음'})`;
+                }
+            } else if (camera.stream_protocol) {
+                streamDetailsHtml = `스트림 상세 정보 없음 (프로토콜: ${camera.stream_protocol})`;
+            }
+
+            const frameTransmissionEnabled = camera.frame_transmission_enabled === true;
+            const toggleButtonText = frameTransmissionEnabled ? '전송 비활성화' : '전송 활성화';
+            const toggleButtonClass = frameTransmissionEnabled ? 'button-danger' : 'button-success'; // button-primary 대신 button-success 사용 고려
+            const cameraIdShort = (camera.camera_id || 'N/A').substring(0, 8);
+            const cameraNameDisplay = camera.camera_name || `카메라 ${cameraIdShort}`;
+
+            camerasHtml += `
+                <div class="camera-item-vertical">
+                    <div class="camera-item-header">
+                        <h4><i class="fas fa-video"></i> ${cameraNameDisplay} (ID: ${cameraIdShort}...)</h4>
+                    </div>
+                    <div class="camera-item-body">
+                        <p><span class="prop-label">상태:</span> <span class="tag tag-status-${(camera.status || 'unknown').toLowerCase()}">${camera.status || 'N/A'}</span></p>
+                        <p><span class="prop-label">타입:</span> <span class="tag tag-type-${(camera.type || 'unknown').toLowerCase()}">${camera.type || 'N/A'}</span></p>
+                        <p><span class="prop-label">환경:</span> <span class="tag tag-env-${(camera.environment || 'unknown').toLowerCase()}">${camera.environment || 'N/A'}</span></p>
+                        <p><span class="prop-label">프로토콜:</span> <span class="tag tag-protocol-${protocol || 'unknown'}">${camera.stream_protocol || 'N/A'}</span></p>
+                        <div class="prop-group stream-details-vertical">
+                            <span class="prop-label">스트림/토픽 정보:</span>
+                            <div class="prop-value">${streamDetailsHtml}</div>
+                        </div>
+                        <p><span class="prop-label">해상도:</span> ${camera.resolution || 'N/A'}</p>
+                        <p><span class="prop-label">FPS:</span> ${camera.fps || 'N/A'}</p>
+                        <p><span class="prop-label">위치:</span> ${camera.location || 'N/A'}</p>
+                        <p><span class="prop-label">호스트 PC:</span> ${camera.host_pc_name || 'N/A'}</p>
+                        <div class="prop-group">
+                            <span class="prop-label">프레임 전송:</span>
+                            <div class="prop-value">
+                                ${camera.camera_id ?
+                                `<button class="button-toggle-frame ${toggleButtonClass}"
+                                         data-agent-id="${agentId}"
+                                         data-camera-id="${camera.camera_id}"
+                                         data-enabled="${frameTransmissionEnabled}">
+                                     <i class="fas ${frameTransmissionEnabled ? 'fa-stop-circle' : 'fa-play-circle'}"></i> ${toggleButtonText}
+                                 </button>` : '카메라 ID 없음'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        camerasHtml += '</div>'; // cameras-list-container div 닫기
+        return camerasHtml;
+    }
+
+    function showAgentDetails(agentId) {
+        currentAgentId = agentId;
+        
+        // 비디오 미리보기 영역 초기화
+        $('#video-preview').hide();
+        const videoPlayer = document.getElementById('videoPlayer');
+        if (videoPlayer) {
+            videoPlayer.pause();
+            videoPlayer.src = '';
+        }
+        if (window.hlsInstance) {
+            window.hlsInstance.destroy();
+            delete window.hlsInstance;
+        }
+        $('#video-preview').find('.video-error-message').remove();
+
+
+        $('#agent-details').html('<p>Agent 상세 정보를 불러오는 중...</p>'); // 로딩 메시지
+
         $.ajax({
-            url: `${API_BASE_URL}/api/set_frame_transmission`,  
-            method: 'POST',  
+            url: `${EFFECTIVE_API_BASE_URL}/webui/agents/${agentId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(agent) {
+                if (!agent || typeof agent !== 'object' || !agent.agent_id) {
+                    logger.error(`/webui/agents/${agentId} 응답이 유효하지 않음:`, agent);
+                    $('#agent-details').html('<p>Agent 상세 정보를 올바르게 받아오지 못했습니다.</p>');
+                    return;
+                }
+
+                let detailsContent = `
+                    <h2>Agent: ${agent.agent_name || 'N/A'}</h2>
+                    <table>
+                        <tr><th>Agent ID</th><td>${agent.agent_id}</td></tr>
+                        <tr><th>IP 주소</th><td>${agent.ip || 'N/A'}</td></tr>
+                        <tr><th>Agent Port</th><td>${agent.agent_port || 'N/A'}</td></tr>
+                        <tr><th>상태</th><td><span class="tag tag-status-${(agent.status || 'unknown').toLowerCase()}">${agent.status || 'N/A'}</span></td></tr>
+                        <tr><th>마지막 업데이트</th><td>${agent.last_update ? new Date(agent.last_update).toLocaleString() : 'N/A'}</td></tr>
+                    </table>
+                `;
+                detailsContent += renderCamerasTable(agent.cameras, agent.agent_id);
+                $('#agent-details').html(detailsContent);
+                $('#agent-controls').show();
+            },
+            error: function(xhr, status, error) {
+                logger.error(`Agent 상세 정보 (${agentId}) 로드 실패:`, status, error, xhr.responseText);
+                $('#agent-details').html('<p>Agent 상세 정보 로드 실패. 콘솔 로그를 확인하세요.</p>');
+            }
+        });
+    }
+
+    $('#agent-details').on('click', '.link-open-stream', function(e) {
+        e.preventDefault();
+        const streamUri = $(this).data('uri');
+        const streamProtocol = $(this).data('protocol'); // 'rtsp', 'hls' 등으로 전달됨
+        if (streamUri) {
+            openVideoStream(streamUri, streamProtocol);
+        } else {
+            showAlert('스트림 URI가 유효하지 않습니다.', 'warn');
+        }
+    });
+
+    $('#agent-details').on('click', '.copyable', function() {
+        copyToClipboard($(this).text());
+    });
+
+    $('#agent-details').on('click', '.button-toggle-frame', function() {
+        const agentId = $(this).data('agent-id');
+        const cameraId = $(this).data('camera-id');
+        const currentEnabledState = $(this).data('enabled'); // boolean 값
+        const enable = !currentEnabledState;
+
+        if (!agentId || !cameraId) {
+            logger.error('프레임 전송 토글: agent-id 또는 camera-id 누락');
+            return;
+        }
+        toggleCameraFrameTransmission(agentId, cameraId, enable);
+    });
+
+    // --- 패널 닫기 버튼 이벤트 ---
+    $('#closeDetailsPanelButton').on('click', function() {
+        $detailsPanel.removeClass('open'); // 패널 닫기
+        // 선택적으로 패널 내용도 초기화
+        $('#agent-details').html('<p>Agent를 선택하면 상세 정보가 여기에 표시됩니다.</p>');
+        $('#video-preview').hide(); // 비디오 미리보기도 숨김
+        currentAgentId = null; // 현재 선택된 에이전트 ID 초기화
+    });
+
+    function toggleCameraFrameTransmission(agentId, cameraId, enable) {
+        // 중요: 이 API는 백엔드에 실제 구현이 필요합니다.
+        const apiUrl = `${EFFECTIVE_API_BASE_URL}/webui/agents/${agentId}/cameras/${cameraId}/control`; 
+        logger.info(`프레임 전송 변경 시도: Agent ${agentId}, Camera ${cameraId}, Enable: ${enable}, URL: ${apiUrl}`);
+
+        $.ajax({
+            url: apiUrl,
+            method: 'POST', // 또는 PUT, 백엔드 API 설계에 따라
             contentType: 'application/json',
             data: JSON.stringify({
-                agent_id: agentId,
                 frame_transmission_enabled: enable
             }),
             success: function(response) {
-                console.log('프레임 전송 설정이 변경되었습니다:', response);
-                showAgentDetails(agentId); // 상세 정보 새로고침
+                logger.info('프레임 전송 설정 변경 성공:', response);
+                if (currentAgentId === agentId) { // 현재 보고 있는 agent 상세 정보만 새로고침
+                    showAgentDetails(agentId);
+                }
             },
             error: function(xhr, status, error) {
-                console.error('프레임 전송 설정 변경에 실패했습니다:', error);
-                alert('프레임 전송 설정 변경에 실패했습니다. 다시 시도해 주세요.');
+                logger.error('프레임 전송 설정 변경 실패:', status, error, xhr.responseText);
+                showAlert('프레임 전송 설정 변경에 실패했습니다. (백엔드 API 및 로그 확인 필요)');
             }
         });
     }
 
-    $('#openVideoStream').click(function() {
-        if (currentAgentId) {
-            $.ajax({
-                url: `${API_BASE_URL}/agents/${currentAgentId}`,
-                method: 'GET',
-                success: function(agent) {
-                    openVideoStream(agent.stream_uri);
-                },
-                error: function(xhr, status, error) {
-                    console.error('Agent 정보를 불러오는데 실패했습니다:', error);
-                }
-            });
-        }
-    });
-
-    function openVideoStream(streamUri) {
+    // --- Video Stream Preview ---
+    function openVideoStream(streamUri, streamProtocol) {
+        const $videoPreview = $('#video-preview');
         const videoPlayer = document.getElementById('videoPlayer');
-        
-        if (Hls.isSupported()) {
-            const hls = new Hls();
-            hls.loadSource(streamUri);
-            hls.attachMedia(videoPlayer);
-            hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                videoPlayer.play();
-            });
-        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-            videoPlayer.src = streamUri;
-            videoPlayer.addEventListener('loadedmetadata', function() {
-                videoPlayer.play();
-            });
+
+        if (!videoPlayer) {
+            logger.error('videoPlayer element를 찾을 수 없습니다.');
+            $videoPreview.hide();
+            return;
         }
 
-        $('#video-preview').show();
+        if (window.hlsInstance) {
+            window.hlsInstance.destroy();
+            delete window.hlsInstance;
+        }
+        videoPlayer.src = '';
+        $(videoPlayer).show(); // 기본적으로 video 태그는 보이도록 설정
+        $videoPreview.find('.video-error-message').remove(); // 이전 에러 메시지 제거
+
+        const protocol = (streamProtocol || '').toLowerCase();
+
+        if (protocol === 'hls' || (streamUri.includes('.m3u8') && protocol !== 'rtsp')) {
+            if (Hls.isSupported()) {
+                const hls = new Hls({ /* debug: true */ }); // 필요시 HLS 설정
+                window.hlsInstance = hls;
+                hls.loadSource(streamUri);
+                hls.attachMedia(videoPlayer);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    videoPlayer.play().catch(e => {
+                        logger.error("HLS 재생 실패:", e);
+                        $videoPreview.prepend('<p class="video-error-message">HLS 비디오 재생에 실패했습니다.</p>');
+                    });
+                });
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    logger.error("HLS.js 오류 발생:", data);
+                    if (data.fatal) {
+                        $videoPreview.prepend(`<p class="video-error-message">HLS 스트림 로드 실패: ${data.details || '알 수 없는 오류'}</p>`);
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR: // 예: Manifest 로드 실패 등
+                                // hls.startLoad(); // 재시도 로직
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR: // 예: 비디오 디코딩 문제
+                                // hls.recoverMediaError(); // 복구 시도
+                                break;
+                            default:
+                                hls.destroy(); delete window.hlsInstance; break;
+                        }
+                    }
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) { // 네이티브 HLS (iOS Safari)
+                videoPlayer.src = streamUri;
+                videoPlayer.play().catch(e => {
+                    logger.error("네이티브 HLS 재생 실패:", e);
+                    $videoPreview.prepend('<p class="video-error-message">네이티브 HLS 비디오 재생에 실패했습니다.</p>');
+                });
+            } else {
+                logger.warn('HLS.js가 지원되지 않는 브라우저입니다.');
+                $(videoPlayer).hide();
+                $videoPreview.prepend('<p class="video-error-message">이 브라우저에서는 HLS 스트림을 재생할 수 없습니다.</p>');
+            }
+        } else if (protocol === 'rtsp') {
+            logger.warn(`RTSP 스트림 (${streamUri})은 브라우저에서 직접 재생 불가.`);
+            $(videoPlayer).hide(); // video 태그 숨김
+            $videoPreview.prepend(`<p class="video-error-message" style="padding: 10px;">RTSP 스트림 (${streamUri})은 브라우저에서 직접 재생할 수 없습니다. VLC 등의 외부 플레이어를 사용하거나 서버에서 HLS/WebRTC로 변환해야 합니다.</p>`);
+        } else {
+            logger.warn(`지원하지 않는 스트림 형식(${protocol || '없음'}) 또는 URI(${streamUri}) 오류`);
+            $(videoPlayer).hide();
+            $videoPreview.prepend(`<p class="video-error-message">지원하지 않는 스트림 형식이거나 URI가 올바르지 않습니다.</p>`);
+        }
+        $videoPreview.show();
     }
 
-    setInterval(fetchAgents, 10000); // 10초마다 Agent 목록 업데이트
-    fetchAgents(); // 초기 Agent 목록 로드
+    $('#closeVideoPreviewButton').on('click', function() {
+        const videoPlayer = document.getElementById('videoPlayer');
+        if (videoPlayer) {
+            videoPlayer.pause();
+            videoPlayer.src = '';
+        }
+        if (window.hlsInstance) {
+            window.hlsInstance.destroy();
+            delete window.hlsInstance;
+        }
+        $('#video-preview').hide();
+        $('#video-preview').find('.video-error-message').remove();
+    });
+
+    // --- Initial Load ---
+    fetchAgents();
+    // setInterval(fetchAgents, 15000); // 15초마다 Agent 목록 자동 업데이트 (필요시 주석 해제)
 });

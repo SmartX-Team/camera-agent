@@ -2,6 +2,7 @@
 
 ## 프로젝트 개요
 
+
 Camera Status Visibility Server는 여러 데스크탑 에이전트로부터 카메라 상태 정보를 수집하고 관리하며, 사용자에게 API를 통해 카메라 상태 조회 및 제어 기능을 제공합니다.
 
 DB는 등록된 Agent 들 정보 관리정도로만 사용하고 있는데 지금은 간단하게 tinyDB 사용해서 서버 컨테이너 새로 생성되면, 데이터 초기화하도록 해둠
@@ -48,7 +49,7 @@ docker build -t camera-status-server .
 컨테이너 실행 예시
 docker run -d -p 5111:5111 camera-status-server
 
-Swagger API 문서 접속
+Swagger API 문서 접속 그런데 25년도 패치 반영안해나서 아마 안될듯 ㅋㅋ
 /apidocs/
 
 접속 예시

@@ -11,6 +11,6 @@ COPY src/main.js.template /usr/share/nginx/html/
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 8111
+EXPOSE 8112
 
 CMD ["nginx", "-g", "daemon off;"]

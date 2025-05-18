@@ -1,5 +1,10 @@
 """
 
+업데이트 된 서버 및 데이터 모델에 맞춰 에이전트도 업데이트!
+
+20250517 작성일 InYong Song 
+
+
 Pod Deployment 로 배포할때 환경변수 load 하는 사긴이랑 모듈 import 시간 문제로 인식 안되길래 해당 문제 개선
 
 
@@ -13,7 +18,7 @@ FAST API 는 후에 gRPC 로 대체될 수 있음
 
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI , HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .rtsp_server import RTSPServer
@@ -24,6 +29,8 @@ import logging
 import os
 import requests
 import time
+import uuid
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,216 +38,257 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global camera_manager, ptp_thread
+    logger.info("Application lifespan: startup sequence initiated.")
+    # 환경 변수 로드
+    app.state.streaming_method = os.getenv('STREAMING_METHOD', 'RTSP').upper()
+    
+    # Visibility 서버 정보
+    # VISIBILITY_SERVER_URL 환경 변수가 전체 URL을 포함하도록 권장
+    server_url_env = os.getenv('VISIBILITY_SERVER_URL', 'http://10.32.187.108:5111')
+    if not (server_url_env.startswith('http://') or server_url_env.startswith('https://')):
+        _server_ip_val = os.getenv('SERVER_IP', '10.32.187.108') # 호환성을 위해 남겨둠
+        _server_port_val = os.getenv('SERVER_PORT', '5111')    # 호환성을 위해 남겨둠
+        app.state.server_url = f'http://{_server_ip_val}:{_server_port_val}'
+    else:
+        app.state.server_url = server_url_env
+    
+    app.state.agent_fastapi_port = int(os.getenv('AGENT_PORT', 8000))
+    # AGENT_ID 환경변수가 있다면 그것을 이름으로 사용, 없으면 AGENT_NAME, 그것도 없으면 기본값 생성
+    app.state.agent_name = os.getenv("AGENT_ID", os.getenv("AGENT_NAME", f"default-agent-{uuid.uuid4().hex[:6]}"))
 
-    STREAMING_METHOD = os.getenv('STREAMING_METHOD', 'RTSP').upper()
-    KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'my_topic')
-    KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
-    FRAME_RATE = int(os.getenv('FRAME_RATE', 5))
-    IMAGE_WIDTH = int(os.getenv('IMAGE_WIDTH', 640))
-    IMAGE_HEIGHT = int(os.getenv('IMAGE_HEIGHT', 480))
 
-    app.state.streaming_method = STREAMING_METHOD
-    app.state.kafka_topic = KAFKA_TOPIC
-    app.state.bootstrap_servers = KAFKA_BOOTSTRAP_SERVERS
+    logger.info(f"Target Visibility Server URL: {app.state.server_url}")
+    logger.info(f"Agent Name: {app.state.agent_name}")
+    logger.info(f"Agent FastAPI Port: {app.state.agent_fastapi_port}")
+    logger.info(f"Streaming Method: {app.state.streaming_method}")
 
     app.state.start_time = time.time()
 
-    # RTSP 서버 초기화 (RTSP 방식일 경우)
-    if STREAMING_METHOD == 'RTSP':
-        app.state.streaming_server = RTSPServer()
-        app.state.streaming_server.start()
-    elif STREAMING_METHOD == 'KAFKA':
-        app.state.streaming_server = None
-    else:
-        app.state.streaming_server = None
+    # 카메라 메타데이터 환경 변수 로드
+    camera_env_configs = {
+        'camera_device_path_override': os.getenv('CAMERA_DEVICE_PATH'),
+        'camera_id_override': os.getenv('CAMERA_ID_OVERRIDE'),
+        'camera_name': os.getenv('CAMERA_NAME'), # CameraManager에서 None일 경우 기본값 처리
+        'camera_type': os.getenv('CAMERA_TYPE', 'rgb'),
+        'camera_environment': os.getenv('CAMERA_ENVIRONMENT', 'real'),
+        'camera_resolution': os.getenv('CAMERA_RESOLUTION', '640x480'),
+        'camera_fps': os.getenv('CAMERA_FPS', '15'),
+        'camera_location': os.getenv('CAMERA_LOCATION'), # CameraManager에서 None일 경우 기본값 처리
+    }
+    logger.info(f"Camera Environment Configs: {camera_env_configs}")
 
-    SERVER_IP = os.getenv('SERVER_IP', '10.32.187.108')  # 기본값 설정
-    SERVER_PORT = os.getenv('SERVER_PORT', '5111')    # 기본 포트 설정
-    SERVER_URL = f'http://{SERVER_IP}:{SERVER_PORT}'
+    # 스트리밍 서버/파라미터 초기화
+    rtsp_server_instance = None
+    kafka_init_params = None
+    app.state.rtsp_server = None # app.state에도 초기화
+    app.state.kafka_params = None
 
-    logger.info(f"SERVER_IP: {SERVER_IP}")
-    logger.info(f"SERVER_PORT: {SERVER_PORT}")
-    logger.info(f"SERVER_URL: {SERVER_URL}")
-    logger.info(f"AGENT_ID: {os.getenv('AGENT_ID')}")
-    logger.info(f"AGENT_PORT: {os.getenv('AGENT_PORT')}")
-
-    # Agent 등록 함수 정의
-    def register_agent():
-        agent_info = {
-            "agent_name": os.getenv("AGENT_ID", "default_agent"),
-            "streaming_method": STREAMING_METHOD,
-            "agent_port": int(os.getenv("AGENT_PORT", 8000)),
+    if app.state.streaming_method == 'RTSP':
+        rtsp_listen_port = int(os.getenv('RTSP_SERVER_LISTEN_PORT', 8554))
+        rtsp_mount_point = os.getenv('RTSP_MOUNT_POINT', '/default_stream')
+        rtsp_server_instance = RTSPServer(port=rtsp_listen_port, mount_point=rtsp_mount_point)
+        rtsp_server_instance.start() 
+        app.state.rtsp_server = rtsp_server_instance
+        logger.info(f"RTSPServer thread started. Listening on port {rtsp_listen_port}, mount point {rtsp_mount_point}.")
+    elif app.state.streaming_method == 'KAFKA':
+        kafka_init_params = {
+            'topic': os.getenv('KAFKA_TOPIC', 'default_video_topic'),
+            'bootstrap_servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
         }
+        app.state.kafka_params = kafka_init_params
+        logger.info(f"Kafka streaming configured with params: {kafka_init_params}")
+    else:
+        logger.warning(f"Unsupported or 'NONE' STREAMING_METHOD: {app.state.streaming_method}. No specific streaming server will be initialized by main.py directly.")
 
-        if STREAMING_METHOD == 'RTSP':
-            agent_info.update({
-                "rtsp_port": app.state.streaming_server.server.props.service,
-                "mount_point": app.state.streaming_server.mount_point,
-                "rtsp_allowed_ip_range": '0.0.0.0/0',
-            })
-        elif STREAMING_METHOD == 'KAFKA':
-            agent_info.update({
-                "kafka_topic": KAFKA_TOPIC,
-                "bootstrap_servers": KAFKA_BOOTSTRAP_SERVERS,
-                "frame_rate": FRAME_RATE,
-                "image_width": IMAGE_WIDTH,
-                "image_height": IMAGE_HEIGHT,
-            })
-        else:
-            logger.error(f"Unsupported STREAMING_METHOD: {STREAMING_METHOD}")
-            return None
+    # --- Agent 등록 로직 ---
+    # CameraManager를 먼저 생성 (이때 agent_id는 임시값 또는 agent_name 사용)
+    temp_cm_for_init = CameraManager(
+        agent_id=app.state.agent_name, 
+        server_url=app.state.server_url,
+        streaming_method=app.state.streaming_method,
+        rtsp_server_instance=rtsp_server_instance, # 생성된 RTSPServer 인스턴스 전달
+        kafka_init_params=kafka_init_params,     # Kafka 설정 전달
+        camera_env_configs=camera_env_configs    # 카메라 메타데이터 설정 전달
+    )
+    initial_cameras_list = temp_cm_for_init.get_initial_camera_data_for_registration()
 
+    if not initial_cameras_list and app.state.streaming_method != 'NONE':
+        logger.error("No camera(s) configured or detected for registration. Registration payload will be empty for cameras.")
+    
+    def perform_agent_registration():
+        registration_payload = {
+            "agent_name": app.state.agent_name,
+            "agent_port": app.state.agent_fastapi_port,
+            "cameras": initial_cameras_list if initial_cameras_list else []
+        }
+        logger.info(f"Attempting agent registration with payload: {registration_payload}")
         try:
-            logger.info(f"Registering agent with info: {agent_info}")
-            response = requests.post(f"{SERVER_URL}/agent/register", json=agent_info)
+            response = requests.post(
+                f"{app.state.server_url}/agent_register", 
+                json=registration_payload,
+                timeout=10
+            )
             logger.info(f"Agent registration response status: {response.status_code}")
-            logger.debug(f"Agent registration response content: {response.text}")
-
             if response.status_code == 201:
                 data = response.json()
-                agent_id = data.get("agent_id")
-                if agent_id:
-                    logger.info(f"Agent registered successfully. Agent ID: {agent_id}")
-                    return agent_id
+                server_assigned_agent_id = data.get("agent_id")
+                if server_assigned_agent_id:
+                    logger.info(f"Agent registered successfully. Server assigned Agent ID: {server_assigned_agent_id}")
+                    return server_assigned_agent_id
                 else:
-                    logger.error(f"'agent_id' not found in response: {data}")
+                    logger.error(f"'agent_id' not found in successful registration response: {data}")
                     return None
             else:
-                logger.error(f"Agent registration failed with status code {response.status_code}: {response.text}")
+                logger.error(f"Agent registration failed. Status: {response.status_code}, Body: {response.text}")
                 return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Agent registration request failed (network/request error): {e}")
+            return None
         except Exception as e:
-            logger.exception("Failed to register agent due to an exception")
+            logger.error(f"An unexpected error occurred during agent registration: {e}", exc_info=True)
             return None
 
-    max_retries = 3  # 최대 재시도 횟수 설정
-    retry_delay = 5  # 재시도 사이의 대기 시간 (초)
-
+    server_assigned_agent_id = None
+    max_retries = 3
+    retry_delay = 5
     for attempt in range(max_retries):
-        agent_id = register_agent()
-        if agent_id is not None:
-            break  # 등록 성공 시 반복 종료
+        server_assigned_agent_id = perform_agent_registration()
+        if server_assigned_agent_id:
+            break
+        logger.error(f"Registration attempt {attempt + 1} of {max_retries} failed.")
+        if attempt < max_retries - 1:
+            logger.info(f"Retrying registration in {retry_delay} seconds...")
+            time.sleep(retry_delay)
         else:
-            logger.error(f"Registration attempt {attempt + 1} failed.")
-            if attempt < max_retries - 1:
-                logger.info(f"Retrying in {retry_delay} seconds...")
-                time.sleep(retry_delay)
-            else:
-                logger.error("Max registration attempts reached. Exiting program.")
-                raise RuntimeError("Max registration attempts reached.")
-                
-    kafka_params = {
-            'topic': KAFKA_TOPIC,
-            'bootstrap_servers': KAFKA_BOOTSTRAP_SERVERS,
-            'frame_rate': FRAME_RATE,
-            'image_width': IMAGE_WIDTH,
-            'image_height': IMAGE_HEIGHT,
-        }
+            logger.error("Maximum registration attempts reached. Agent may not function correctly with the server.")
+            # raise RuntimeError("Failed to register agent with server after multiple retries.") # 필요시 에러 발생
 
-    # CameraManager 초기화 및 시작
-    camera_manager = CameraManager(
-        streaming_server=app.state.streaming_server,
-        agent_id=agent_id,
-        server_url=SERVER_URL,
-        streaming_method=STREAMING_METHOD,
-        kafka_params=kafka_params
-    )
-    camera_manager.start()
-    app.state.camera_manager = camera_manager
+    # CameraManager 최종 설정 및 시작
+    app.state.camera_manager = temp_cm_for_init # 어쨌든 camera_manager는 app.state에 할당
+    if server_assigned_agent_id:
+        app.state.camera_manager.agent_id = server_assigned_agent_id # 실제 ID로 업데이트
+        logger.info(f"CameraManager will use final agent_id: {server_assigned_agent_id}")
+    else:
+        logger.warning(f"CameraManager will use placeholder agent_id: {app.state.camera_manager.agent_id} due to registration failure.")
+    
+    # 등록 성공 여부와 관계없이 CameraManager 스레드는 시작 (로컬 기능 또는 재시도 등 고려)
+    # 단, server_url이 있어야 서버 통신 시도라도 할 수 있음
+    if app.state.server_url: # 서버 URL이 있을 때만 CM 스레드 시작 (서버 통신 시도)
+         app.state.camera_manager.start()
+         logger.info("CameraManager thread started.")
+    else:
+        logger.warning("VISIBILITY_SERVER_URL not set. CameraManager thread not started. Agent will operate locally if possible.")
 
-    # PTP 동기화 시작
-    #ptp_thread = threading.Thread(target=synchronize_with_ptp_server, daemon=True)
-    #ptp_thread.start()
 
-    # 애플리케이션이 실행되는 동안 유지시킴
-    yield
+    yield # FastAPI 애플리케이션 실행 구간
 
-    # 애플리케이션 종료 시 행동
-    camera_manager.stop()
-    if STREAMING_METHOD == 'RTSP' and app.state.streaming_server:
-        app.state.streaming_server.loop.quit()
+    # --- 애플리케이션 종료 시 처리 ---
+    logger.info("Application lifespan: shutdown sequence initiated.")
+    if hasattr(app.state, 'camera_manager') and app.state.camera_manager and app.state.camera_manager.is_alive():
+        logger.info("Stopping CameraManager thread...")
+        app.state.camera_manager.stop_manager_thread()
+        app.state.camera_manager.join(timeout=10)
+        if app.state.camera_manager.is_alive():
+            logger.warning("CameraManager thread did not terminate gracefully.")
+    
+    if hasattr(app.state, 'rtsp_server') and app.state.rtsp_server and app.state.rtsp_server.is_alive():
+        logger.info("Stopping RTSPServer thread...")
+        app.state.rtsp_server.stop_server()
+        app.state.rtsp_server.join(timeout=5)
+        if app.state.rtsp_server.is_alive():
+            logger.warning("RTSPServer thread did not terminate gracefully.")
+
     logger.info("Application shutdown completed.")
+
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 모든 도메인 허용 (필요에 따라 특정 도메인으로 제한 가능)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.post("/start_stream")
-def start_stream():
-    if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
-        app.state.streaming_server.start_stream()
-        return {"message": "RTSP 스트리밍을 시작"}
-    elif app.state.streaming_method == 'KAFKA' and app.state.camera_manager.kafka_streamer:
-        app.state.camera_manager.kafka_streamer.start_stream()
-        return {"message": "Kafka 스트리밍을 시작"}
+# --- FastAPI 엔드포인트들 ---
+def get_cm(): # Helper function to get camera_manager from app.state
+    if not hasattr(app.state, 'camera_manager') or not app.state.camera_manager:
+        raise HTTPException(status_code=503, detail="CameraManager not initialized or agent not registered.")
+    return app.state.camera_manager
+
+@app.post("/start_stream", summary="Start the camera stream")
+async def start_stream_endpoint():
+    cm = get_cm()
+    if cm.start_stream(): # CameraManager.start_stream()은 성공 시 True 반환하도록 수정 가정
+        return {"message": f"{app.state.streaming_method} streaming started for device {cm.current_device_path}"}
     else:
-        return {"message": "스트리밍 서버가 초기화되지 않았습니다."}
-
-@app.post("/stop_stream")
-def stop_stream():
-    if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
-        app.state.streaming_server.stop_stream()
-        return {"message": "RTSP 스트리밍을 중지하고 빈 영상을 송출"}
-    elif app.state.streaming_method == 'KAFKA' and app.state.camera_manager.kafka_streamer:
-        app.state.camera_manager.kafka_streamer.stop_stream()
-        return {"message": "Kafka 스트리밍을 중지"}
-    else:
-        return {"message": "스트리밍 서버가 초기화되지 않았습니다."}
-
-@app.get("/camera_info")
-def get_camera_info():
-    camera_info = camera_manager.get_camera_info()
-    response = {
-        "camera_found": len(camera_info) > 0,
-        "camera_list": camera_info
-    }
-    if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
-        response.update({
-            "stream_uri": app.state.streaming_server.get_stream_uri(),
-        })
-    elif app.state.streaming_method == 'KAFKA' and app.state.camera_manager.kafka_streamer:
-        response.update({
-            "kafka_topic": app.state.kafka_topic,
-            "bootstrap_servers": app.state.bootstrap_servers,
-        })
-    return response
-
-@app.post("/shutdown")
-def shutdown():
-    # 애플리케이션 종료
-    app.state.camera_manager.stop()
-    if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
-        app.state.streaming_server.loop.quit()
-    return {"message": "Agent를 종료"}
-
-@app.get("/health")
-async def health_check():
-    try:
-        if app.state.streaming_method == 'RTSP' and app.state.streaming_server:
-            streaming_status = app.state.streaming_server.check_status()
-        elif app.state.streaming_method == 'KAFKA' and app.state.camera_manager.kafka_streamer:
-            streaming_status = app.state.camera_manager.kafka_streamer.running
+        # start_stream이 False를 반환했거나, current_device_path가 없을 수 있음
+        detail_msg = f"Failed to start {app.state.streaming_method} stream"
+        if not cm.current_device_path:
+            detail_msg += " (no active camera device)"
         else:
-            streaming_status = False
+            detail_msg += f" for device {cm.current_device_path}"
+        raise HTTPException(status_code=500, detail=detail_msg)
 
-        camera_status = app.state.camera_manager.check_status()
+@app.post("/stop_stream", summary="Stop the camera stream")
+async def stop_stream_endpoint():
+    cm = get_cm()
+    cm.stop_stream() # 반환값 없어도 일단 실행
+    return {"message": f"{app.state.streaming_method} streaming stopped."}
+
+@app.get("/camera_info", summary="Get information about managed camera(s)")
+async def get_camera_info_endpoint():
+    cm = get_cm()
+    camera_list_details = cm.get_camera_info() 
+    return {
+        "agent_id": cm.agent_id, # 현재 CM이 알고있는 agent_id 포함
+        "streaming_method": app.state.streaming_method,
+        "camera_found": len(camera_list_details) > 0 if camera_list_details else False,
+        "camera_list": camera_list_details if camera_list_details else []
+    }
+
+@app.get("/health", summary="Perform a health check of the agent")
+async def health_check_endpoint():
+    # STREAMING_METHOD을 app.state에서 가져오도록 수정
+    current_streaming_method = app.state.streaming_method if hasattr(app.state, 'streaming_method') else 'UNKNOWN'
+    
+    if not hasattr(app.state, 'camera_manager') or not app.state.camera_manager:
+        uptime = time.time() - app.state.start_time if hasattr(app.state, 'start_time') else 0
+        return {"status": "error", "message": "CameraManager not initialized", "uptime_seconds": uptime}
+
+    cm = app.state.camera_manager
+    try:
+        device_path = cm.current_device_path
+        camera_device_ok = cm.is_camera_available(device_path) if device_path else False
+        streaming_pipeline_active = cm.check_status()
+        
+        agent_overall_status = "ok"
+        # frame_transmission_enabled는 self.cameras[0]에 저장된 '서버가 원하는 상태' 또는 '로컬의 실제 상태'
+        # 여기서는 실제 파이프라인 상태를 기준으로 판단
+        is_transmitting_when_should = True # 기본값을 True로 두고, 문제가 있을 때 False로 변경
+        if current_streaming_method != 'NONE': # 스트리밍 방식이 설정된 경우에만
+            if cm.cameras and isinstance(cm.cameras[0], dict): # 카메라 정보가 있을 때
+                 # 서버가 전송을 원하는데 (frame_transmission_enabled=True) 실제 파이프라인이 안돌면 degraded
+                if cm.cameras[0].get('frame_transmission_enabled') and not streaming_pipeline_active:
+                    agent_overall_status = "degraded"
+                    is_transmitting_when_should = False
+            # 장치가 없으면 error
+            if not camera_device_ok:
+                agent_overall_status = "error"
+                is_transmitting_when_should = False # 장치가 없으므로 전송 불가
+
         return {
-            "status": "ok" if streaming_status and camera_status else "degraded",
-            "streaming_server": streaming_status,
-            "camera": camera_status,
-            "last_error": None,
-            "uptime": time.time() - app.state.start_time
+            "status": agent_overall_status,
+            "agent_id": cm.agent_id,
+            "camera_device_available": camera_device_ok,
+            "streaming_pipeline_active": streaming_pipeline_active,
+            "configured_streaming_method": current_streaming_method,
+            "expected_vs_actual_transmission": is_transmitting_when_should,
+            "visibility_server_url": app.state.server_url if hasattr(app.state, 'server_url') else "N/A",
+            "uptime_seconds": time.time() - app.state.start_time
         }
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        logger.error(f"Health check failed: {e}", exc_info=True)
+        uptime = time.time() - app.state.start_time if hasattr(app.state, 'start_time') else 0
+        return {"status": "error", "detail": str(e), "uptime_seconds": uptime}

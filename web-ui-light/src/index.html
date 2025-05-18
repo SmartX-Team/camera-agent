@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agent 관리 시스템</title>
+    <title>Camera Agent 관리 페이지</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,7 +13,6 @@
             <ul>
                 <li><a href="#" class="active">Agent 목록</a></li>
                 <li><a href="https://future-argocd-url.com" target="_blank">ArgoCD</a></li>
-                <!-- 추가적인 비저빌리티 사이트 링크들 -->
             </ul>
         </nav>
         <main class="content">
@@ -25,37 +24,36 @@
                         <tr>
                             <th>이름</th>
                             <th>IP</th>
-                            <th>Port</th>
-                            <th>Stream URI</th>
+                            <th>Agent Port</th>
+                            <th>카메라 정보</th>
                             <th>상세보기</th>
                         </tr>
                     </thead>
                     <tbody id="agent-table-body">
-                        <!-- Agent 데이터가 여기에 동적으로 삽입됩니다 -->
                     </tbody>
                 </table>
             </div>
         </main>
-        <aside class="details-panel">
+        
+        <aside class="details-panel" id="detailsPanel"> 
+            <button id="closeDetailsPanelButton" style="float: right; margin-bottom: 10px;">X 닫기</button>
             <h2>Agent 상세 정보</h2>
             <div id="agent-details">
-                <!-- 선택된 Agent의 상세 정보가 여기에 표시됩니다 -->
                 <p>Agent를 선택하면 상세 정보가 여기에 표시됩니다.</p>
             </div>
             <div id="agent-controls" style="display: none;">
-                <h3>Agent 제어</h3>
-                <button id="toggleFrameTransmission">프레임 전송 토글</button>
-                <button id="openVideoStream">스트림 보기</button>
+                <h3>Agent 전체 제어 (예시)</h3>
             </div>
-            <!-- 비디오 플레이어 모달 -->
             <div id="video-preview" style="display: none;">
                 <h3>비디오 미리보기</h3>
-                <video id="videoPlayer" controls style="width: 100%;"></video>
+                <video id="videoPlayer" controls style="width: 100%; max-height: 400px;"></video>
+                <button id="closeVideoPreviewButton" style="margin-top: 5px;">미리보기 닫기</button>
             </div>
         </aside>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="main.js"></script>
 </body>
 </html>

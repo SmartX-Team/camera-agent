@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
-PyGObject
+PyGObject==3.46.0
 requests
 netifaces
 kafka-python

@@ -1,6 +1,6 @@
 """
 
-gstreamer 로 rtsp 서버 개방하도록 하는 코드
+gstreamer 기반반 rtsp 서버 스트리밍 제공하는 모듈
 
 최근 작성일 240930 송인용
 
@@ -53,23 +53,22 @@ class CustomRTSPMediaFactory(GstRtspServer.RTSPMediaFactory):
     
     # 파이프라인 상태 변경 이벤트 처리
     def _on_bus_message(self, bus, message):
-        try:
-            t = message.type
-            if t == Gst.MessageType.ERROR:
-                err, debug = message.parse_error()
-                logger.error(f"Pipeline error: {err.message}")
-                logger.debug(f"Debug details: {debug}")
-                self._handle_pipeline_error()
-            elif t == Gst.MessageType.EOS:
-                logger.info("End of stream")
-                self._handle_eos()
-            elif t == Gst.MessageType.STATE_CHANGED:
+        t = message.type
+        if t == Gst.MessageType.ERROR:
+            err, debug = message.parse_error()
+            logger.error(f"RTSP GST Pipeline Error for device {self.device}: {err}, Debug: {debug}")
+            # 필요시 파이프라인 중지 또는 재시작 로직
+        elif t == Gst.MessageType.EOS:
+            logger.info(f"RTSP GST Pipeline EOS for device {self.device}.")
+        elif t == Gst.MessageType.STATE_CHANGED:
+            if message.src == self.pipeline: # 파이프라인 전체의 상태 변경만 로깅
                 old, new, pending = message.parse_state_changed()
-                logger.debug(f"Pipeline state: {old.value_nick} -> {new.value_nick}")
-            else:
-                logger.debug(f"Unhandled message type: {t}")
-        except Exception as e:
-            logger.exception(f"Exception in bus message handler: {e}")
+                logger.info(f"RTSP GST Pipeline state changed for device {self.device}: {old.value_nick} -> {new.value_nick}")
+                if new == Gst.State.PLAYING:
+                    logger.info(f"RTSP GST Pipeline for {self.device} is NOW PLAYING.")
+                elif new == Gst.State.NULL and old == Gst.State.PLAYING:
+                    logger.info(f"RTSP GST Pipeline for {self.device} has stopped.")
+        return True
 
     def do_media_configure(self, rtsp_media):
         logger.info("do_media_configure called.")
@@ -127,6 +126,10 @@ class RTSPServer(threading.Thread):
         
         logger.info(f"RTSP Server initialized on port {port} with mount point {mount_point}")
         logger.info(f"RTSP Server is accessible at rtsp://{self.external_ip}:{self.external_port}{mount_point}")
+        
+    def get_full_stream_uri(self):
+        """외부에서 접속 가능한 전체 RTSP URI를 반환"""
+        return f"rtsp://{self.external_ip}:{self.external_port}{self.mount_point}"
 
     def run(self):
         self.server.attach(None)
