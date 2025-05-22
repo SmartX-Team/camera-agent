@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AgentRegister(Resource):
-    @swag_from('../docs/agent_register.yml') # YAML 파일은 새 데이터 모델에 맞게 업데이트 필수
+    @swag_from('../docs/agent_register.yml')
     def post(self):
         data = request.get_json()
         if not data:
@@ -29,42 +29,51 @@ class AgentRegister(Resource):
             return {'message': 'Request body must be JSON'}, 400
 
         agent_name = data.get('agent_name')
-        # host_ip는 요청을 보낸 클라이언트의 실제 IP로 자동 설정됨
         host_ip = self.get_client_ip()
         agent_port = data.get('agent_port', 8000)
-        cameras_payload = data.get('cameras') # API 페이로드의 카메라 정보
-        agent_status_payload = data.get('status', 'active') # 에이전트 자체의 초기 상태
+        cameras_payload = data.get('cameras')
+        agent_status_payload = data.get('status', 'active')
 
         if not agent_name:
             logger.warning("AgentRegister: 'agent_name' is missing.")
             return {'message': 'agent_name is required'}, 400
-        # cameras_payload는 리스트 형태여야 함 (AgentModel에서 더 상세히 처리)
-        if not isinstance(cameras_payload, list):
+        if cameras_payload is None or not isinstance(cameras_payload, list): # None 체크 추가
             logger.warning("AgentRegister: 'cameras' field must be a list or is missing.")
+            # 'cameras'가 필수가 아니라면 이 검사를 조정할 수 있습니다.
+            # 여기서는 필수라고 가정하고 에러 처리합니다.
+            # 만약 빈 리스트도 허용한다면, cameras_payload if cameras_payload is not None else [] 등으로 처리 가능
             return {'message': 'cameras list is required and must be a list'}, 400
 
-        # AgentModel.add_agent에 전달할 정보 구성
+
         agent_info_for_model = {
             'agent_name': agent_name,
             'ip': host_ip,
             'agent_port': agent_port,
-            'cameras': cameras_payload, # AgentModel.add_agent가 이 리스트를 처리
+            'cameras': cameras_payload,
             'status': agent_status_payload
         }
         logger.info(f"AgentRegister: Attempting to register agent: {agent_name} from IP: {host_ip}")
 
         try:
-            # AgentModel.add_agent는 내부적으로 agent_id 생성, 타임스탬프 설정,
-            # 카메라 정보 처리 후 db_instance.insert_agent_document 호출
             agent_id = AgentModel.add_agent(agent_info_for_model)
-            logger.info(f"AgentRegister: Agent '{agent_name}' registered successfully with ID: {agent_id}")
-            return {'message': 'Agent registered successfully', 'agent_id': agent_id}, 201
-        except ValueError as ve:
-            logger.error(f"AgentRegister: Validation error for agent '{agent_name}'. Details: {ve}")
+
+            # AgentModel.add_agent의 반환 값(agent_id)을 확인합니다.
+            if agent_id:
+                logger.info(f"AgentRegister: Agent '{agent_name}' registered successfully with ID: {agent_id}")
+                return {'message': 'Agent registered successfully', 'agent_id': agent_id}, 201
+            else:
+                # agent_id가 None이면 AgentModel.add_agent에서 DB 등록에 실패한 것입니다.
+                logger.error(f"AgentRegister: Failed to register agent '{agent_name}'. AgentModel.add_agent returned None (DB insertion likely failed).")
+                return {'message': 'Agent registration failed due to an internal server error.'}, 500
+
+        except ValueError as ve: # AgentModel에서 발생시킬 수 있는 유효성 검사 오류
+            logger.error(f"AgentRegister: Validation error for agent '{agent_name}'. Details: {ve}", exc_info=True) # exc_info 추가
             return {'message': str(ve)}, 400
-        except Exception as e:
-            logger.error(f"AgentRegister: Failed to register agent '{agent_name}'. Error: {e}", exc_info=True)
+        except Exception as e: # 그 외 예기치 않은 모든 오류
+            logger.error(f"AgentRegister: Unexpected error while trying to register agent '{agent_name}'. Error: {e}", exc_info=True)
             return {'message': 'Internal server error during agent registration'}, 500
+
+
 
     def get_client_ip(self):
         if request.headers.getlist("X-Forwarded-For"):

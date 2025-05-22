@@ -23,6 +23,9 @@ import uuid
 from datetime import datetime
 # from tinydb import Query # Query는 이제 database.py 내부에서만 사용됩니다.
 from database import db_instance # 수정된 database.py의 db_instance를 임포트합니다.
+import logging
+
+logger_agent_model = logging.getLogger(__name__)
 
 class AgentModel:
     @staticmethod
@@ -65,8 +68,15 @@ class AgentModel:
             'status': agent_info_from_api.get('status', 'active')
         }
 
-        db_instance.insert_agent_document(agent_document)
-        return agent_id
+        insertion_result = db_instance.insert_agent_document(agent_document)
+
+        if insertion_result: # True 또는 유효한 doc_id 등으로 성공 판단
+            logger_agent_model.info(f"Agent {agent_document['agent_name']} (ID: {agent_id}) successfully inserted into DB.")
+            return agent_id # 원래 생성한 agent_id 반환
+        else:
+            logger_agent_model.error(f"Failed to insert agent {agent_document['agent_name']} (ID: {agent_id}) into DB. insert_agent_document returned: {insertion_result}")
+            return None # 실패를 나타내는 None 반환
+
 
     @staticmethod
     def upsert_agent(agent_document_to_upsert: dict):
