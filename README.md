@@ -31,11 +31,76 @@ A containerized system that transforms standard webcams into IP cameras with cen
 ![Camera Agent 3계층 아키텍처](/docs/images/3tier-architecture.png)
 
 
+## 🚧 Development Status
+
+### Completed Features ✅
+- Docker-based agent-server communication
+- WebUI for agent monitoring and control
+- RTSP streaming with GStreamer (only Box)
+- KAFKA streaming (Box, ROS2, Omniverse)
+- Agent registration and discovery
+
+### In Progress 🔄
+- Omniverse virtual camera synchronization
+- PTP time synchronization reActivation
+- Advanced Prometheus metrics
+- Kubernetes deployment optimization
+
+### Planned Features 📋
+- Enhanced security features
+- Performance optimization
+
 
 ## 🚀 Quick Start
 
 Although pre-built images are provided, all Dockerfiles are also supplied so you can build and use them additionally as shown below.
 
+
+```bash
+
+# RTSP based Streaming 
+docker run -d --rm \
+    --network host \
+    --name my-rtsp-camera-agent \
+    --device /dev/video0:/dev/video0 \
+    -e VISIBILITY_SERVER_URL="<YOUR visibility Server IP>" \
+    -e AGENT_NAME="RTSP_Camera_Agent_01" \
+    -e AGENT_PORT="8000" \
+    -e STREAMING_METHOD="RTSP" \
+    -e CAMERA_DEVICE_PATH="/dev/video0" \
+    -e CAMERA_ID_OVERRIDE="a1b2c3d4-e5f6-7890-1234-567890abcdef" \
+    -e CAMERA_NAME="MobileX_studio_(RTSP)" \
+    -e CAMERA_TYPE="rgb" \
+    -e CAMERA_ENVIRONMENT="real" \
+    -e CAMERA_RESOLUTION="1280x720" \
+    -e CAMERA_FPS="25" \
+    -e CAMERA_LOCATION="MobileX_studio" \
+    -e RTSP_SERVER_LISTEN_PORT="8554" \
+    -e RTSP_MOUNT_POINT="/live_stream_01" \
+    ttyy441/camera-agent:0.6.2
+
+# KAFKA based Streaming  
+docker run  --rm \
+    --network host \
+    --name my-kafka-camera-agent \
+    --device /dev/video0:/dev/video0 \
+    -e VISIBILITY_SERVER_URL="http://10.32.187.108:5111" \
+    -e AGENT_NAME="Kafka_Camera_Agent_01" \
+    -e AGENT_PORT="8000" \
+    -e STREAMING_METHOD="KAFKA" \
+    -e CAMERA_DEVICE_PATH="/dev/video0" \
+    -e CAMERA_ID_OVERRIDE="kfk-cam-uuid-001" \
+    -e CAMERA_NAME="공정라인 A 카메라 (Kafka)" \
+    -e CAMERA_TYPE="rgb" \
+    -e CAMERA_ENVIRONMENT="real" \
+    -e CAMERA_RESOLUTION="1280x720" \
+    -e CAMERA_FPS="20" \
+    -e CAMERA_LOCATION="공정라인 A 위" \
+    -e KAFKA_TOPIC="camera-agent-01" \
+    -e KAFKA_BOOTSTRAP_SERVERS="10.79.1.1:9094" \
+    ttyy441/camera-agent:0.6.1
+
+```
 
 ### Local Development
 ```bash
@@ -71,12 +136,12 @@ docker run -d --name camera-webui \
 
 ## 📦 Core Components
 
-### 🎥 Camera Agent
+### 🎥 Camera Agent (sub folder: fastapi_agent)
 **Technology Stack:** FastAPI, GStreamer, Prometheus Client
 **Purpose:** Transforms webcams into RTSP-streamable IP cameras with real-time monitoring
 
 #### Key Features
-- **RTSP Streaming**: GStreamer-based pipeline for multi-client camera access
+- **RTSP/KAFKA Streaming**: GStreamer-based pipeline for multi-client camera access
 - **Dynamic Control**: RESTful API for stream start/stop operations
 - **Time Synchronization**: PTP protocol support (currently disabled for stability)
 - **Metrics Export**: Prometheus-compatible system metrics
@@ -159,6 +224,11 @@ GET    /prometheus/metrics       # Aggregated metrics
 
 ![Web-UI](/docs/images/agent-ui.png)
 
+
+### AI-service-visibility 
+While the functionality is supported, it only provides REST API support and is not yet officially documented. It acts as a server that manages metadata for applying desired camera sources to specific AI services, based on Redis.
+
+
 ### ⏱️ PTP Server
 **Technology Stack:** Linux PTP, Docker
 **Purpose:** Network time synchronization for multi-agent deployments
@@ -223,26 +293,6 @@ ENABLE_METRICS=true
   }
 }
 ```
-
-## 🚧 Development Status
-
-### Completed Features ✅
-- Docker-based agent-server communication
-- WebUI for agent monitoring and control
-- RTSP streaming with GStreamer (only Box)
-- KAFKA streaming (Box, ROS2, Omniverse)
-- Agent registration and discovery
-
-
-### In Progress 🔄
-- Omniverse virtual camera synchronization
-- PTP time synchronization reActivation
-- Advanced Prometheus metrics
-- Kubernetes deployment optimization
-
-### Planned Features 📋
-- Enhanced security features
-- Performance optimization
 
 
 ### API Documentation
